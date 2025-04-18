@@ -11,7 +11,7 @@ contract BuyEarth is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         uint price;
         string image_url;
     }
-    Earth[100] private earths;
+    Earth[] private earths;
 
     event EarthPurchased(
         uint256 indexed idx,
@@ -37,7 +37,7 @@ contract BuyEarth is Initializable, UUPSUpgradeable, OwnableUpgradeable {
             msg.value == EARTH_PRICE,
             "Invalid payment, please send 0.01 MON"
         );
-        require(_idx < 100 && _idx >= 0, "Invalid index");
+        // require(_idx < 100 && _idx >= 0, "Invalid index");
 
         (bool send, ) = owner().call{value: msg.value}("");
         require(send, "Failed to send Ether");

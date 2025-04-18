@@ -31,6 +31,72 @@ const handprintIcon = {
   viewBox: "0 0 24 24"
 };
 
+// Toast样式组件
+const ToastContainer = styled.div`
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  justify-content: center;
+`;
+
+const ToastContent = styled.div`
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  background-color: ${props => props.type === "error" ? "rgba(231, 76, 60, 0.9)" : "rgba(52, 152, 219, 0.9)"};
+  color: white;
+  border-radius: 15px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: slideDown 0.3s ease-out forwards;
+  width: 100%;
+  backdrop-filter: blur(5px);
+  border: 1px solid ${props => props.type === "error" ? "rgba(231, 76, 60, 0.6)" : "rgba(52, 152, 219, 0.6)"};
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+`;
+
+const ToastIcon = styled.div`
+  margin-right: 10px;
+  font-size: 20px;
+`;
+
+const ToastMessage = styled.div`
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+`;
+
+const ToastCloseButton = styled.button`
+  background-color: rgba(255, 255, 255, 0.25);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 10px;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.35);
+  }
+`;
+
 // 自定义Toast组件
 const Toast = ({ message, isVisible, onClose, type = "info" }) => {
   useEffect(() => {
@@ -58,12 +124,18 @@ const Toast = ({ message, isVisible, onClose, type = "info" }) => {
 const App = () => {
   const [selectedColor, setSelectedColor] = useState(0); // 默认不选颜色
   const [selectedTile, setSelectedTile] = useState(null);
-  const [earthData, setEarthData] = useState(Array(100).fill({ color: 0, price: 0, image_url: "" }));
+  const [gridSize, setGridSize] = useState(10); // 初始网格大小
+  const [earthData, setEarthData] = useState([]); // 初始化为空数组
   const [imageUrl, setImageUrl] = useState("");
   const [customColor, setCustomColor] = useState("#FF00FF"); // 默认自定义颜色为紫色
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { chain } = useNetwork(); // 获取当前连接的链
+  const [showSettingsModal, setShowSettingsModal] = useState(false); // 新增设置模态框状态
+  const [windowSize, setWindowSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight
+  });
   
   // 社交媒体用户名状态
   const [platform, setPlatform] = useState("github"); // 默认为GitHub
@@ -81,6 +153,98 @@ const App = () => {
     type: "info"
   });
 
+  // 读取所有方块数据
+  const { data: earthsData, refetch } = useContractRead({
+    address: contractAddress,
+    abi: contractABI,
+    functionName: 'getEarths',
+    watch: true,
+  });
+
+  // 监听窗口大小变化，动态调整格子数量
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // 修改计算网格大小的方法，使用固定尺寸
+  useEffect(() => {
+    // 根据可用屏幕宽度计算可以容纳的格子数量
+    const availableWidth = windowSize.width - 20; // 减去左右边距
+    const tileSize = 44.2; // 固定格子大小为44.2px
+    
+    // 计算能容纳的格子数量
+    const calculatedGridSize = Math.floor(availableWidth / tileSize);
+    
+    // 确保网格大小至少为10，最多为30（防止格子过多导致性能问题）
+    const newGridSize = Math.max(10, Math.min(30, calculatedGridSize));
+    setGridSize(newGridSize);
+  }, [windowSize]);
+
+  // 当合约数据更新或gridSize更改时，确保earthData大小足够
+  useEffect(() => {
+    if (earthsData) {
+      try {
+        // 处理合约数据
+        const earthDataArray = Array.from(earthsData).map(earth => ({
+          color: Number(earth.color),
+          price: Number(earth.price),
+          image_url: earth.image_url
+        }));
+        
+        // 查找最大已使用的索引
+        let maxUsedIndex = -1;
+        for (let i = 0; i < earthDataArray.length; i++) {
+          const earth = earthDataArray[i];
+          if (earth && (earth.color !== 0 || (earth.image_url && earth.image_url.trim() !== ""))) {
+            maxUsedIndex = i;
+          }
+        }
+        
+        // 计算需要的行数
+        const requiredRows = Math.ceil((maxUsedIndex + 1) / gridSize);
+        
+        // 计算所需总格子数
+        const requiredTiles = Math.max(
+          gridSize * gridSize, // 至少铺满整个屏幕
+          requiredRows * gridSize // 或者包含最大索引所在行
+        );
+        
+        // 确保earthData长度足够
+        if (earthDataArray.length < requiredTiles) {
+          const paddedArray = [...earthDataArray];
+          while (paddedArray.length < requiredTiles) {
+            paddedArray.push({ color: 0, price: 0, image_url: "" });
+          }
+          setEarthData(paddedArray);
+        } else {
+          setEarthData(earthDataArray);
+        }
+        
+      } catch (error) {
+        console.error("Error processing contract data:", error);
+        // 创建备用数据
+        const newData = Array(gridSize * gridSize).fill().map(() => ({ 
+          color: 0, price: 0, image_url: "" 
+        }));
+        setEarthData(newData);
+      }
+    } else {
+      // 如果没有合约数据，初始化空格子
+      const newData = Array(gridSize * gridSize).fill().map(() => ({ 
+        color: 0, price: 0, image_url: "" 
+      }));
+      setEarthData(newData);
+    }
+  }, [earthsData, gridSize]);
+
   // 显示Toast消息
   const showToast = (message, type = "info") => {
     setToast({
@@ -97,14 +261,6 @@ const App = () => {
       visible: false
     }));
   };
-
-  // 读取所有方块数据
-  const { data: earthsData, refetch } = useContractRead({
-    address: contractAddress,
-    abi: contractABI,
-    functionName: 'getEarths',
-    watch: true,
-  });
 
   // 购买方块
   const { write: buyEarthWrite, data: buyEarthData, error: writeError, isError: isWriteError } = useContractWrite({
@@ -137,54 +293,13 @@ const App = () => {
       refetch();
       setSelectedTile(null);
       showToast("Purchase successful!", "info");
+      // 购买成功后检查是否需要扩展网格
+      checkAndExpandGrid();
     } else if (isError && error) {
       console.error("Transaction error:", error);
       handleTransactionError(error);
     }
   }, [isSuccess, isError, error, refetch]);
-
-  // 当合约数据更新时更新UI
-  useEffect(() => {
-    if (earthsData) {
-      try {
-        // 定义一个安全的方式来处理BigInt值的JSON序列化
-        const safeStringify = (obj) => {
-          return JSON.stringify(obj, (key, value) => 
-            typeof value === 'bigint' ? value.toString() : value
-          );
-        };
-        
-        console.log("Contract data:", safeStringify(earthsData));
-        
-        // 检查一下第一个方块的数据
-        if (earthsData[0]) {
-          console.log("First tile data:", {
-            color: Number(earthsData[0].color),
-            price: Number(earthsData[0].price),
-            image_url: earthsData[0].image_url
-          });
-        }
-        
-        const earthDataArray = Array.from(earthsData).map(earth => ({
-          color: Number(earth.color),
-          price: Number(earth.price),
-          image_url: earth.image_url
-        }));
-        
-        console.log("Processed tile data:", earthDataArray[0]);
-        setEarthData(earthDataArray);
-      } catch (error) {
-        console.error("Error processing contract data:", error);
-        // 仍然尝试正常设置数据，即使日志有问题
-        const earthDataArray = Array.from(earthsData).map(earth => ({
-          color: Number(earth.color),
-          price: Number(earth.price),
-          image_url: earth.image_url
-        }));
-        setEarthData(earthDataArray);
-      }
-    }
-  }, [earthsData]);
 
   // 处理图片URL输入变化
   const handleImageUrlChange = (e) => {
@@ -216,7 +331,7 @@ const App = () => {
   // 获取头像URL
   const handleGetAvatarUrl = async () => {
     if (!username) {
-      showToast("Please enter a username or URL", "error");
+      showToast("Please enter a username", "error");
       return;
     }
     
@@ -224,6 +339,10 @@ const App = () => {
     if (platform === 'twitter') {
       setTwitterFetchFailed(false);
     }
+    
+    // 设置加载状态
+    setShowPreview(false);
+    showToast(platform === "custom" ? "Fetching image..." : `Fetching ${platform === 'github' ? 'GitHub' : 'X(Twitter)'} avatar...`, "info");
     
     try {
       let avatarUrl;
@@ -244,15 +363,7 @@ const App = () => {
         } else {
           avatarUrl = username;
         }
-        setShowPreview(true);
       } else {
-        // 显示加载中提示
-        if (platform === 'twitter') {
-          showToast("Fetching Twitter avatar, please wait...", "info");
-        } else {
-          showToast(`Fetching ${platform === 'github' ? 'GitHub' : 'X(Twitter)'} avatar...`, "info");
-        }
-        
         // 使用社交媒体API获取头像 - 异步方式
         try {
           // 使用异步方法获取头像
@@ -273,11 +384,11 @@ const App = () => {
             return;
           }
           
-          // 仅为非Twitter平台使用备选方案
+          // 使用备选方案
           avatarUrl = getAvatarFromUIAvatars(username, platform);
         }
         
-        // 如果头像获取失败，直接返回
+        // 如果头像获取失败，使用默认头像
         if (!avatarUrl) {
           if (platform === 'twitter') {
             setTwitterFetchFailed(true);
@@ -287,12 +398,11 @@ const App = () => {
           }
           return;
         }
-        
-        setShowPreview(true);
       }
       
       setPreviewUrl(avatarUrl);
       setImageUrl(avatarUrl);
+      setShowPreview(true);
       showToast(
         platform === "custom" 
           ? "Custom image fetched successfully" 
@@ -333,7 +443,7 @@ const App = () => {
     console.log(`Clicked tile #${index}:`, earthData[index]);
 
     // 检查方块是否已被购买
-    const earth = earthData[index];
+    const earth = earthData[index] || { color: 0, image_url: "" };
     const hasColor = earth.color !== 0;
     const hasImage = earth.image_url && earth.image_url.trim() !== "";
     const isPurchased = hasColor || hasImage;
@@ -431,6 +541,72 @@ const App = () => {
     setSelectedColor(7); // 自动选择自定义颜色选项
   };
 
+  // 为格子添加设置按钮样式
+  const TileSettingsButton = styled.button`
+    position: absolute;
+    bottom: 3px;
+    right: 3px;
+    width: 24px;
+    height: 24px;
+    background-color: rgba(255, 255, 255, 0.7);
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 10;
+    padding: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    
+    &:hover {
+      transform: scale(1.1);
+      background-color: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+    }
+  `;
+
+  const SettingsIcon = styled.span`
+    font-size: 14px;
+    line-height: 1;
+  `;
+
+  // 添加格子包装器来确保正方形
+  const TileWrapper = styled.div`
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    position: relative;
+    padding: 1px;
+  `;
+
+  // 修改Tile样式让设置按钮在悬停时显示
+  const Tile = styled.div`
+    background-color: white;
+    border: 1px solid #cccccc;
+    cursor: ${props => props.$purchased ? 'not-allowed' : 'pointer'};
+    transition: all 0.2s ease;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 4px;
+    overflow: hidden;
+    
+    &:hover {
+      transform: ${props => props.$purchased ? 'none' : 'scale(0.97)'};
+      border-color: ${props => props.$isSelected ? '#3498db' : '#b0b0b0'};
+      z-index: 2;
+    }
+    
+    ${props => props.$isSelected && `
+      border: 2px solid #3498db;
+      z-index: 3;
+    `}
+  `;
+
   // 创建背景颜色层组件
   const ColorBackground = styled.div`
     position: absolute;
@@ -445,12 +621,42 @@ const App = () => {
     pointer-events: none; // 避免影响点击事件
   `;
 
-  // 渲染10x10网格
+  // 更新检查格子扩展的函数
+  const checkAndExpandGrid = () => {
+    // 计算购买的格子数量
+    const purchasedCount = earthData.filter(earth => earth.color !== 0 || (earth.image_url && earth.image_url.trim() !== "")).length;
+    
+    // 检查剩余空格子是否低于总格子的20%
+    const totalTiles = gridSize * gridSize;
+    const remainingTiles = totalTiles - purchasedCount;
+    
+    if (remainingTiles < totalTiles * 0.2) {
+      // 需要扩展网格 - 增加20%
+      const newSize = Math.ceil(gridSize * 1.2);
+      
+      // 创建新的扩展数组
+      const newEarthData = Array(newSize * newSize).fill().map((_, index) => {
+        if (index < earthData.length) {
+          // 保留原有数据
+          return earthData[index];
+        } else {
+          // 添加新的空格子
+          return { color: 0, price: 0, image_url: "" };
+        }
+      });
+      
+      setGridSize(newSize);
+      setEarthData(newEarthData);
+      showToast(`Grid expanded to ${newSize}x${newSize}`, "info");
+    }
+  };
+
+  // 修改渲染网格的方法
   const renderGrid = () => {
     return (
-      <Grid>
-        {Array(100).fill(0).map((_, index) => {
-          const earth = earthData[index];
+      <Grid $gridSize={gridSize}>
+        {Array(earthData.length).fill(0).map((_, index) => {
+          const earth = earthData[index] || { color: 0, image_url: "" };
           // 检查是否有颜色和图片
           const hasColor = earth.color !== 0;
           const hasImage = earth.image_url && earth.image_url.trim() !== "";
@@ -474,371 +680,434 @@ const App = () => {
           const isPurchased = hasColor || hasImage;
 
           return (
-            <Tile
-              key={index}
-              $isSelected={isSelected}
-              onClick={() => handleTileClick(index)}
-              $purchased={isPurchased}
-            >
-              {/* 始终添加背景颜色层 */}
-              <ColorBackground 
-                color={hasColor ? backgroundColor : '#FFFFFF'} 
-                $hasImage={hasImage}
-              />
-              {hasImage && <TileImage src={earth.image_url} alt={`Tile ${index}`} $hasColor={hasColor} />}
-            </Tile>
+            <TileWrapper key={index}>
+              <Tile
+                $isSelected={isSelected}
+                onClick={() => handleTileClick(index)}
+                $purchased={isPurchased}
+              >
+                {/* 始终添加背景颜色层 */}
+                <ColorBackground 
+                  color={hasColor ? backgroundColor : '#FFFFFF'} 
+                  $hasImage={hasImage}
+                />
+                {hasImage && <TileImage src={earth.image_url} alt={`Tile ${index}`} $hasColor={hasColor} />}
+              </Tile>
+            </TileWrapper>
           );
         })}
       </Grid>
     );
   };
 
+  // 设置模态框组件
+  const SettingsModal = () => {
+    if (!showSettingsModal) return null;
+    
+    return (
+      <ModalOverlay>
+        <ModalContent>
+          <ModalHeader>
+            <ModalTitle>Tile Settings</ModalTitle>
+            <CloseButton onClick={() => setShowSettingsModal(false)}>×</CloseButton>
+          </ModalHeader>
+          
+          <ModalBody>
+            <SettingsSection>
+              <SectionTitle>Select Color</SectionTitle>
+              <ColorSelection>
+                <ColorPicker>
+                  {Object.entries(colorMap).map(([value, color]) => {
+                    const intValue = parseInt(value);
+                    // 自定义颜色选项特殊处理
+                    if (color === "custom") {
+                      return (
+                        <CustomColorContainer 
+                          key={value} 
+                          $selected={selectedColor === intValue} 
+                          onClick={() => handleColorSelection(intValue)}
+                        >
+                          <CustomColorLabel>Custom</CustomColorLabel>
+                          <CustomColorInput
+                            type="color"
+                            value={customColor}
+                            onChange={handleCustomColorChange}
+                            title="Click to select a custom color"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleColorSelection(intValue);
+                            }}
+                          />
+                        </CustomColorContainer>
+                      );
+                    }
+                    return (
+                      <ColorOption 
+                        key={value}
+                        style={{ backgroundColor: color }}
+                        $selected={selectedColor === intValue}
+                        onClick={() => handleColorSelection(intValue)}
+                      />
+                    );
+                  })}
+                </ColorPicker>
+              </ColorSelection>
+            </SettingsSection>
+
+            <SettingsSection>
+              <SectionTitle>Set Image</SectionTitle>
+              <InputGroup>
+                <Select
+                  value={platform}
+                  onChange={handlePlatformChange}
+                >
+                  <option value="github">GitHub</option>
+                  <option value="twitter">Twitter</option>
+                  <option value="custom">Custom URL</option>
+                </Select>
+                <Input 
+                  type="text"
+                  placeholder={platform === "custom" ? "Enter image URL" : `Enter ${platform === "github" ? "GitHub" : "Twitter"} username`}
+                  value={username}
+                  onChange={handleUsernameChange}
+                  autoComplete="off"
+                />
+                <FetchButton onClick={handleGetAvatarUrl}>Fetch</FetchButton>
+              </InputGroup>
+
+              {/* 图片预览 */}
+              {showPreview && (
+                <PreviewContainer>
+                  <PreviewHeader>
+                    <PreviewTitle>Image Preview</PreviewTitle>
+                    <ClosePreviewButton onClick={resetPreview}>×</ClosePreviewButton>
+                  </PreviewHeader>
+                  <ImagePreview>
+                    <PreviewImage src={previewUrl} alt="Preview" />
+                  </ImagePreview>
+                </PreviewContainer>
+              )}
+            </SettingsSection>
+            
+            <ActionButton onClick={handleBuyEarth}>
+              Purchase This Tile
+            </ActionButton>
+          </ModalBody>
+        </ModalContent>
+      </ModalOverlay>
+    );
+  };
+
   return (
-    <Container>
+    <FullScreenContainer>
+      <AppHeader>
+        <Logo>
+          <LogoIcon>🧩</LogoIcon>
+          <LogoTextGroup>
+            <LogoText>Pixel Grid</LogoText>
+            <LogoSubtitle>Blockchain-based pixel art canvas</LogoSubtitle>
+          </LogoTextGroup>
+        </Logo>
+        <WalletSection>
+          <ConnectButton.Custom>
+            {({
+              account,
+              chain,
+              openAccountModal,
+              openChainModal,
+              openConnectModal,
+              authenticationStatus,
+              mounted,
+            }) => {
+              const ready = mounted && authenticationStatus !== 'loading';
+              const connected =
+                ready &&
+                account &&
+                chain &&
+                (!authenticationStatus ||
+                  authenticationStatus === 'authenticated');
+
+              return (
+                <div
+                  {...(!ready && {
+                    'aria-hidden': true,
+                    'style': {
+                      opacity: 0,
+                      pointerEvents: 'none',
+                      userSelect: 'none',
+                    },
+                  })}
+                >
+                  {(() => {
+                    if (!connected) {
+                      return (
+                        <EnhancedConnectButton onClick={openConnectModal} type="button">
+                          Connect Wallet
+                        </EnhancedConnectButton>
+                      );
+                    }
+
+                    return (
+                      <WalletConnected>
+                        <button
+                          onClick={openChainModal}
+                          className="chain-button"
+                          type="button"
+                        >
+                          {chain.hasIcon && (
+                            <div
+                              className="chain-icon"
+                              style={{
+                                background: chain.iconBackground,
+                                width: 12,
+                                height: 12,
+                                borderRadius: 999,
+                                overflow: 'hidden',
+                                marginRight: 4,
+                              }}
+                            >
+                              {chain.iconUrl && (
+                                <img
+                                  alt={chain.name ?? 'Chain icon'}
+                                  src={chain.iconUrl}
+                                  style={{ width: 12, height: 12 }}
+                                />
+                              )}
+                            </div>
+                          )}
+                          {chain.name}
+                        </button>
+
+                        <AccountButton onClick={openAccountModal} type="button">
+                          {account.displayName}
+                          {account.displayBalance
+                            ? ` (${account.displayBalance})`
+                            : ''}
+                        </AccountButton>
+                      </WalletConnected>
+                    );
+                  })()}
+                </div>
+              );
+            }}
+          </ConnectButton.Custom>
+        </WalletSection>
+      </AppHeader>
+      
+      <MainContent>
+        {renderGrid()}
+        
+        {/* 修改浮动设置按钮，更改图标和文字 */}
+        {isConnected && (
+          <FloatingActionButton 
+            onClick={() => {
+              if (selectedTile === null) {
+                showToast("Please select a tile first", "error");
+              } else {
+                setShowSettingsModal(true);
+              }
+            }}
+            title="Customize tile"
+          >
+            <CustomizeIcon>🎨</CustomizeIcon> Customize This Tile
+          </FloatingActionButton>
+        )}
+      </MainContent>
+      
       <Toast 
         message={toast.message} 
         isVisible={toast.visible} 
         onClose={closeToast} 
         type={toast.type} 
       />
-      <Card>
-        <Header>
-          <Logo>
-            <LogoIcon>🧩</LogoIcon>
-            <LogoTextGroup>
-              <LogoText>Pixel Grid</LogoText>
-              <LogoSubtitle>Blockchain-based pixel art canvas</LogoSubtitle>
-            </LogoTextGroup>
-          </Logo>
-          <WalletSection>
-            {isConnected ? (
-              <WalletConnected>
-                <WalletAvatar>
-                  <WalletAvatarText>{address?.slice(-2)}</WalletAvatarText>
-                </WalletAvatar>
-                <WalletInfo>
-                  <WalletAddress>{`${address?.slice(0, 6)}...${address?.slice(-2)}`}</WalletAddress>
-                  <NetworkInfo>
-                    <ConnectionStatus $connected={isConnected}>
-                      <StatusDot $connected={isConnected} />
-                      Connected
-                    </ConnectionStatus>
-                    {chain && <NetworkName>{chain.name}</NetworkName>}
-                  </NetworkInfo>
-                </WalletInfo>
-                <LogoutButton onClick={disconnect}>
-                  <LogoutIcon>⏏️</LogoutIcon>
-                  <span>Logout</span>
-                </LogoutButton>
-              </WalletConnected>
-            ) : (
-              <WalletConnectContainer>
-                <ConnectIcon>🔗</ConnectIcon>
-                <ConnectButton.Custom>
-                  {({
-                    account,
-                    chain,
-                    openAccountModal,
-                    openChainModal,
-                    openConnectModal,
-                    authenticationStatus,
-                    mounted,
-                  }) => {
-                    // 注意: 如果您的应用不使用身份验证，可以删除这些条件
-                    const ready = mounted && authenticationStatus !== 'loading';
-                    const connected =
-                      ready &&
-                      account &&
-                      chain &&
-                      (!authenticationStatus ||
-                        authenticationStatus === 'authenticated');
-
-                    return (
-                      <div
-                        {...(!ready && {
-                          'aria-hidden': true,
-                          'style': {
-                            opacity: 0,
-                            pointerEvents: 'none',
-                            userSelect: 'none',
-                          },
-                        })}
-                      >
-                        {(() => {
-                          if (!connected) {
-                            return (
-                              <EnhancedConnectButton onClick={openConnectModal} type="button">
-                                Connect Wallet
-                              </EnhancedConnectButton>
-                            );
-                          }
-
-                          return (
-                            <div style={{ display: 'flex', gap: 12 }}>
-                              <button
-                                onClick={openChainModal}
-                                style={{ display: 'flex', alignItems: 'center' }}
-                                type="button"
-                              >
-                                {chain.hasIcon && (
-                                  <div
-                                    style={{
-                                      background: chain.iconBackground,
-                                      width: 12,
-                                      height: 12,
-                                      borderRadius: 999,
-                                      overflow: 'hidden',
-                                      marginRight: 4,
-                                    }}
-                                  >
-                                    {chain.iconUrl && (
-                                      <img
-                                        alt={chain.name ?? 'Chain icon'}
-                                        src={chain.iconUrl}
-                                        style={{ width: 12, height: 12 }}
-                                      />
-                                    )}
-                                  </div>
-                                )}
-                                {chain.name}
-                              </button>
-
-                              <button onClick={openAccountModal} type="button">
-                                {account.displayName}
-                                {account.displayBalance
-                                  ? ` (${account.displayBalance})`
-                                  : ''}
-                              </button>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    );
-                  }}
-                </ConnectButton.Custom>
-              </WalletConnectContainer>
-            )}
-          </WalletSection>
-        </Header>
-        
-        <MainContent>
-          {renderGrid()}
-
-          <ControlPanel>
-            <ColorSelectionTitle>Select Color</ColorSelectionTitle>
-            <ColorSelection>
-              <ColorPicker>
-                {Object.entries(colorMap).map(([value, color]) => {
-                  const intValue = parseInt(value);
-                  // 自定义颜色选项特殊处理
-                  if (color === "custom") {
-                    return (
-                      <CustomColorContainer 
-                        key={value} 
-                        $selected={selectedColor === intValue} 
-                        onClick={() => handleColorSelection(value)}
-                      >
-                        <CustomColorLabel>Custom</CustomColorLabel>
-                        <CustomColorInput
-                          type="color"
-                          value={customColor}
-                          onChange={handleCustomColorChange}
-                          title="Click to select a custom color"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleColorSelection(value);
-                          }}
-                        />
-                      </CustomColorContainer>
-                    );
-                  }
-                  // 常规颜色选项
-                  return (
-                    <ColorOption
-                      key={value}
-                      color={color}
-                      $selected={selectedColor === intValue}
-                      onClick={() => handleColorSelection(value)}
-                    >
-                      {selectedColor === intValue && (
-                        <HandprintIcon viewBox={handprintIcon.viewBox}>
-                          <path d={handprintIcon.path} fill="#fff" />
-                        </HandprintIcon>
-                      )}
-                    </ColorOption>
-                  );
-                })}
-              </ColorPicker>
-            </ColorSelection>
-
-            <ConnectButtonWrapper>
-              {isConnected ? (
-                <PurchaseContainer>
-                  {/* 社交媒体头像获取部分 */}
-                  <SocialAvatarContainer>
-                    <SocialAvatarTitle>Use Social Media Avatar</SocialAvatarTitle>
-                    <SocialInputGroup>
-                      <SocialSelect 
-                        value={platform} 
-                        onChange={handlePlatformChange}
-                      >
-                        <option value="github">GitHub</option>
-                        <option value="twitter">X (Twitter)</option>
-                        <option value="custom">Custom URL</option>
-                      </SocialSelect>
-                      <SocialInput
-                        type="text"
-                        placeholder={platform === 'custom' ? 'Enter image URL' : `Enter ${platform === 'github' ? 'GitHub' : 'X(Twitter)'} username`}
-                        value={username}
-                        onChange={handleUsernameChange}
-                      />
-                      <SocialButton onClick={handleGetAvatarUrl}>
-                        Get Avatar
-                      </SocialButton>
-                    </SocialInputGroup>
-                    
-                    {/* 平台提示信息 - 只在获取失败时显示 */}
-                    {platform === 'twitter' && twitterFetchFailed && (
-                      <PlatformNote>
-                        <TwitterTipHeading>🔍 Fetch Failed, Try Manual Method</TwitterTipHeading>
-                        <TwitterTipText>
-                          Twitter avatar fetch failed, follow these steps to get it manually:
-                        </TwitterTipText>
-                        <TwitterStepList>
-                          <TwitterStep>
-                            <span>1.</span> 
-                            <TwitterLinkButton 
-                              onClick={() => window.open(`https://x.com/${username}/photo`, '_blank')}
-                              disabled={!username}
-                            >
-                              Open Twitter Photo Page
-                            </TwitterLinkButton>
-                          </TwitterStep>
-                          <TwitterStep>
-                            <span>2.</span> Right-click on the image → Select "Copy Image Address"
-                          </TwitterStep>
-                          <TwitterStep>
-                            <span>3.</span> 
-                            <TwitterActionButton
-                              onClick={() => {
-                                setPlatform('custom');
-                                showToast('Switched to Custom URL mode, please paste Twitter image address', 'info');
-                              }}
-                            >
-                              Switch to Custom URL
-                            </TwitterActionButton>
-                          </TwitterStep>
-                          <TwitterStep>
-                            <span>4.</span> Paste the copied image URL → Click "Get Avatar"
-                          </TwitterStep>
-                          <TwitterTipHighlight>
-                            Image URL should start with "pbs.twimg.com/profile_images"
-                          </TwitterTipHighlight>
-                        </TwitterStepList>
-                      </PlatformNote>
-                    )}
-                    
-                    {/* 预览区域 */}
-                    {showPreview && (
-                      <PreviewContainer>
-                        <PreviewHeader>
-                          <PreviewTitle>Preview</PreviewTitle>
-                          <ClosePreviewButton onClick={resetPreview}>✕</ClosePreviewButton>
-                        </PreviewHeader>
-                        <ImagePreview>
-                          <PreviewImage 
-                            src={previewUrl} 
-                            alt="Avatar preview"
-                            onError={() => {
-                              showToast("Failed to load image", "error");
-                              setShowPreview(false);
-                            }}
-                          />
-                        </ImagePreview>
-                        <PreviewInfo>
-                          <PreviewText>
-                            {platform === 'custom' ? 'Custom image' : 
-                              `${platform === 'github' ? 'GitHub' : 'X(Twitter)'} avatar: ${username}`}
-                          </PreviewText>
-                          <ApplyButton 
-                            onClick={() => {
-                              setImageUrl(previewUrl);
-                              showToast("Applied to image URL", "info");
-                            }}
-                          >
-                            Apply
-                          </ApplyButton>
-                        </PreviewInfo>
-                      </PreviewContainer>
-                    )}
-                  </SocialAvatarContainer>
-                  
-                  <BuyButton
-                    onClick={handleBuyEarth}
-                    disabled={selectedTile === null || isLoading}
-                  >
-                    {isLoading ? 'Processing...' : 'Buy Tile'}
-                  </BuyButton>
-                </PurchaseContainer>
-              ) : (
-                <NotConnectedContainer>
-                  <WalletPromptTitle>Connect Your Wallet</WalletPromptTitle>
-                  <PlaceholderText>Please connect your wallet to buy tiles</PlaceholderText>
-                  <ConnectButton.Custom>
-                    {({
-                      account,
-                      chain,
-                      openAccountModal,
-                      openChainModal,
-                      openConnectModal,
-                      authenticationStatus,
-                      mounted,
-                    }) => {
-                      const ready = mounted && authenticationStatus !== 'loading';
-                      const connected =
-                        ready &&
-                        account &&
-                        chain &&
-                        (!authenticationStatus || authenticationStatus === 'authenticated');
-
-                      return (
-                        <div
-                          {...(!ready && {
-                            'aria-hidden': true,
-                            'style': {
-                              opacity: 0,
-                              pointerEvents: 'none',
-                              userSelect: 'none',
-                            },
-                          })}
-                        >
-                          {!connected && (
-                            <EnhancedConnectButton onClick={openConnectModal} type="button">
-                              Connect Wallet
-                            </EnhancedConnectButton>
-                          )}
-                        </div>
-                      );
-                    }}
-                  </ConnectButton.Custom>
-                </NotConnectedContainer>
-              )}
-            </ConnectButtonWrapper>
-          </ControlPanel>
-        </MainContent>
-      </Card>
-    </Container>
+      
+      <SettingsModal />
+    </FullScreenContainer>
   );
 };
 
-// 预览相关样式组件
-const PreviewContainer = styled.div`
-  margin-top: 15px;
-  padding: 12px;
-  background-color: white;
+// 新增和修改样式组件
+const FullScreenContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
+  background-color: #f5f5f5;
+`;
+
+const AppHeader = styled.header`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 30px;
+  background: #e0e0e0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  z-index: 10;
+`;
+
+const MainContent = styled.main`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 15px 10px; // 上下15px，左右10px的间距
+  position: relative;
+  background-color: #f5f5f5;
+`;
+
+const Grid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(${props => props.$gridSize}, 44.2px); // 固定宽度44.2px
+  grid-template-rows: repeat(${props => props.$gridSize}, 44.2px); // 固定高度44.2px
+  gap: 1px;
+  background-color: #ffffff; // 改为白色背景
   border-radius: 8px;
-  border: 1px solid #e6f2ff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  overflow: auto;
+  width: auto; // 自适应宽度
+  max-width: 95%;
+  margin: 15px 10px; // 上下15px，左右10px的间距
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(200, 200, 200, 0.5);
+`;
+
+// 新增模态框相关样式
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  background: white;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+`;
+
+const ModalTitle = styled.h2`
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: #666;
+  cursor: pointer;
+  transition: color 0.2s;
+  
+  &:hover {
+    color: #333;
+  }
+`;
+
+const ModalBody = styled.div`
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+`;
+
+const SettingsSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+`;
+
+const SectionTitle = styled.h3`
+  margin: 0;
+  font-size: 16px;
+  color: #333;
+`;
+
+const InputGroup = styled.div`
+  display: flex;
+  gap: 8px;
+  width: 100%;
+`;
+
+const Select = styled.select`
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: white;
+`;
+
+const Input = styled.input`
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  flex: 1;
+  background-color: white;
+  
+  &:focus {
+    border-color: #3498db;
+    outline: none;
+  }
+`;
+
+const FetchButton = styled.button`
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0 15px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: #2980b9;
+  }
+`;
+
+const ActionButton = styled.button`
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  
+  &:hover {
+    background-color: #2980b9;
+  }
+`;
+
+const PreviewContainer = styled.div`
+  margin-top: 10px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 10px;
+  background-color: #f9f9f9;
 `;
 
 const PreviewHeader = styled.div`
@@ -890,74 +1159,45 @@ const PreviewImage = styled.img`
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 `;
 
-const PreviewInfo = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 10px;
-`;
-
-const PreviewText = styled.div`
-  font-size: 13px;
-  color: #666;
-  font-style: italic;
-`;
-
-const ApplyButton = styled.button`
-  background-color: #3498db;
-  color: white;
+const AccountButton = styled.button`
+  background: none;
   border: none;
-  border-radius: 4px;
-  padding: 5px 10px;
-  font-size: 12px;
-  font-weight: 500;
+  color: #333;
+  font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
-
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+  
   &:hover {
-    background-color: #2980b9;
-    transform: translateY(-1px);
-  }
-
-  &:active {
-    transform: translateY(0);
+    background-color: #f0f0f0;
   }
 `;
 
-// 样式组件
-const Container = styled.div`
+const WalletConnected = styled.div`
   display: flex;
-  justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  background-color: #f5f5f5;
-  padding: 20px;
-`;
-
-const Card = styled.div`
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 500px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  overflow: hidden;
-  padding-bottom: 30px;
-`;
-
-const Header = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  padding: 15px 20px;
-  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-  border-radius: 15px 15px 0 0;
-  border-bottom: 1px solid #e1e4e8;
-  margin-bottom: 15px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  gap: 10px;
+  background-color: rgba(52, 152, 219, 0.08);
+  border-radius: 8px;
+  padding: 5px 10px;
+  
+  .chain-button {
+    background: none;
+    border: none;
+    display: flex;
+    align-items: center;
+    color: #3498db;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+    
+    &:hover {
+      background-color: rgba(52, 152, 219, 0.1);
+    }
+  }
 `;
 
 const Logo = styled.div`
@@ -994,175 +1234,30 @@ const WalletSection = styled.div`
   align-items: center;
 `;
 
-const WalletConnected = styled.div`
-  display: flex;
-  align-items: center;
-  background-color: rgba(52, 152, 219, 0.08);
-  border-radius: 12px;
-  padding: 12px 15px;
-  border: 1px solid rgba(52, 152, 219, 0.2);
-  gap: 10px;
-`;
-
-const WalletAvatar = styled.div`
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(45deg, #3498db, #2980b9);
+const EnhancedConnectButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
+  background-color: #3498db;
   color: white;
-  font-weight: bold;
-  font-size: 14px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-`;
-
-const WalletAvatarText = styled.div`
-  text-transform: uppercase;
-`;
-
-const WalletInfo = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-`;
-
-const WalletAddress = styled.div`
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-`;
-
-const NetworkInfo = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const NetworkName = styled.div`
-  font-size: 11px;
-  color: #3498db;
-  background-color: rgba(52, 152, 219, 0.1);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 500;
-`;
-
-const ConnectionStatus = styled.div`
-  font-size: 11px;
-  color: ${props => props.$connected ? '#27ae60' : '#e74c3c'};
-  display: flex;
-  align-items: center;
-  gap: 4px;
-`;
-
-const StatusDot = styled.div`
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: ${props => props.$connected ? '#27ae60' : '#e74c3c'};
-`;
-
-const LogoutButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background-color: rgba(231, 76, 60, 0.1);
-  color: #e74c3c;
-  border: 1px solid rgba(231, 76, 60, 0.2);
+  border: none;
   border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 12px;
+  padding: 8px 15px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(52, 152, 219, 0.3);
   
   &:hover {
-    background-color: rgba(231, 76, 60, 0.2);
+    background-color: #2980b9;
     transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(52, 152, 219, 0.4);
   }
   
   &:active {
     transform: translateY(0);
-  }
-`;
-
-const LogoutIcon = styled.span`
-  font-size: 14px;
-`;
-
-const WalletConnectContainer = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background-color: rgba(52, 152, 219, 0.08);
-  border-radius: 12px;
-  padding: 12px 15px;
-  border: 1px solid rgba(52, 152, 219, 0.2);
-  transition: all 0.3s ease;
-
-  &:hover {
-    background-color: rgba(52, 152, 219, 0.12);
-    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.1);
-  }
-`;
-
-const ConnectIcon = styled.span`
-  font-size: 20px;
-  color: #3498db;
-`;
-
-const MainContent = styled.div`
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0 15px;
-  margin-top: 10px;
-`;
-
-const PlaceholderText = styled.div`
-  color: #95a5a6;
-  font-size: 14px;
-  text-align: center;
-  margin-bottom: 20px;
-  font-style: italic;
-`;
-
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  grid-template-rows: repeat(10, 1fr);
-  gap: 2px;
-  width: 100%;
-  aspect-ratio: 1;
-  border: 1px solid #e5e8ec;
-  margin-bottom: 25px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-  border-radius: 8px;
-  padding: 4px;
-  background-color: #f9f9fb;
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
-  will-change: transform;
-`;
-
-const Tile = styled.div`
-  background-color: transparent;
-  border: ${props => props.$isSelected ? '2px solid #000' : '1px solid #ddd'};
-  cursor: ${props => props.$purchased ? 'not-allowed' : 'pointer'};
-  transition: all 0.2s ease;
-  position: relative;
-  border-radius: 3px;
-  box-shadow: ${props => props.$isSelected ? '0 0 8px rgba(0, 0, 0, 0.3)' : 'none'};
-  overflow: hidden;
-
-  &:hover {
-    transform: ${props => props.$purchased ? 'none' : 'scale(1.05)'};
-    box-shadow: ${props => props.$purchased ? 'none' : '0 0 5px rgba(0,0,0,0.2)'};
-    z-index: 1;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
   }
 `;
 
@@ -1186,38 +1281,6 @@ const TileImage = styled.img`
   z-index: 2;
   pointer-events: none;
   filter: contrast(1.05);
-`;
-
-const ControlPanel = styled.div`
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  background-color: #f9f9fb;
-  padding: 20px;
-  border-radius: 15px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-  margin-top: 5px;
-`;
-
-const ColorSelectionTitle = styled.h3`
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 0 15px 0;
-  color: #333;
-  text-align: center;
-  position: relative;
-  
-  &:after {
-    content: '';
-    position: absolute;
-    bottom: -8px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 40px;
-    height: 2px;
-    background-color: #3498db;
-    border-radius: 2px;
-  }
 `;
 
 const ColorSelection = styled.div`
@@ -1252,56 +1315,6 @@ const ColorOption = styled.div`
   &:hover {
     transform: scale(1.12);
     box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
-  }
-`;
-
-const HandprintIcon = styled.svg`
-  width: 24px;
-  height: 24px;
-  position: absolute;
-  opacity: 0.9;
-`;
-
-const ConnectButtonWrapper = styled.div`
-  display: flex;
-  justify-content: center;
-  width: 100%;
-`;
-
-const PurchaseContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  gap: 15px;
-  align-items: center;
-`;
-
-const InputContainer = styled.div`
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-`;
-
-const InputLabel = styled.label`
-  font-size: 16px;
-  margin-bottom: 8px;
-  color: #333;
-  font-weight: 500;
-`;
-
-const Input = styled.input`
-  padding: 12px 15px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 14px;
-  width: 100%;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
-  transition: border-color 0.2s, box-shadow 0.2s;
-
-  &:focus {
-    border-color: #3498db;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 3px rgba(52, 152, 219, 0.1);
-    outline: none;
   }
 `;
 
@@ -1382,431 +1395,44 @@ const CustomColorInput = styled.input`
   }
 `;
 
-const BuyButton = styled.button`
-  background-color: #3498db;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 14px 25px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  width: 100%;
-  max-width: 200px;
-  box-shadow: 0 4px 6px rgba(52, 152, 219, 0.2);
-  margin-top: 5px;
-
-  &:hover {
-    background-color: #2980b9;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 8px rgba(52, 152, 219, 0.25);
-  }
-
-  &:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.2);
-  }
-
-  &:disabled {
-    background-color: #95a5a6;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-  }
-`;
-
-const NotConnectedContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  width: 100%;
-  padding: 25px 0 15px;
-  background-color: rgba(52, 152, 219, 0.05);
-  border-radius: 12px;
-  border: 1px dashed rgba(52, 152, 219, 0.3);
-`;
-
-// Toast样式组件
-const ToastContainer = styled.div`
+// 修改浮动操作按钮颜色为青色
+const FloatingActionButton = styled.button`
   position: fixed;
-  top: 20px;
+  bottom: 30px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 9999;
-  width: 100%;
-  max-width: 320px;
-  display: flex;
-  justify-content: center;
-`;
-
-const ToastContent = styled.div`
+  width: 230px;
+  height: 50px;
+  border-radius: 25px;
+  background-color: #00BFFF; // 保持青色
+  color: white;
   display: flex;
   align-items: center;
-  padding: 14px 18px;
-  background-color: ${props => props.type === "error" ? "rgba(231, 76, 60, 0.9)" : "rgba(52, 152, 219, 0.9)"};
-  color: white;
-  border-radius: 15px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  animation: slideDown 0.3s ease-out forwards;
-  width: 100%;
-  backdrop-filter: blur(5px);
-  border: 1px solid ${props => props.type === "error" ? "rgba(231, 76, 60, 0.6)" : "rgba(52, 152, 219, 0.6)"};
-
-  @keyframes slideDown {
-    from {
-      opacity: 0;
-      transform: translateY(-20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 187, 255, 0.3);
+  border: none;
+  cursor: pointer;
+  z-index: 100;
+  transition: all 0.3s;
+  font-size: 16px;
+  font-weight: 500;
+  
+  &:hover {
+    background-color: #00A5DD;
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 187, 255, 0.4);
+  }
+  
+  &:active {
+    transform: translateX(-50%) translateY(0);
   }
 `;
 
-const ToastIcon = styled.div`
-  margin-right: 10px;
+// 替换设置图标组件
+const CustomizeIcon = styled.span`
   font-size: 20px;
-`;
-
-const ToastMessage = styled.div`
-  flex: 1;
-  font-size: 14px;
-  font-weight: 500;
-`;
-
-const ToastCloseButton = styled.button`
-  background-color: rgba(255, 255, 255, 0.25);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-left: 10px;
-
-  &:hover {
-    background-color: rgba(255, 255, 255, 0.35);
-  }
-`;
-
-// 社交媒体头像样式组件
-const SocialAvatarContainer = styled.div`
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  margin-top: 15px;
-  padding: 15px;
-  background-color: #f7fbff;
-  border-radius: 8px;
-  border: 1px dashed #b8daff;
-`;
-
-const SocialAvatarTitle = styled.div`
-  font-size: 15px;
-  font-weight: 500;
-  color: #2980b9;
-  margin-bottom: 12px;
-  position: relative;
-  padding-left: 22px;
-  
-  &:before {
-    content: "👤";
-    position: absolute;
-    left: 0;
-    top: -1px;
-  }
-`;
-
-const SocialInputGroup = styled.div`
-  display: flex;
-  gap: 8px;
-  width: 100%;
-`;
-
-const SocialSelect = styled.select`
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-  background-color: white;
-  width: 120px;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
-
-  &:focus {
-    border-color: #3498db;
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-  }
-`;
-
-const SocialInput = styled.input`
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-  flex: 1;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
-
-  &:focus {
-    border-color: #3498db;
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-  }
-`;
-
-const SocialButton = styled.button`
-  background-color: #2ecc71;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 10px 15px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(46, 204, 113, 0.2);
-
-  &:hover {
-    background-color: #27ae60;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px rgba(46, 204, 113, 0.25);
-  }
-
-  &:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 2px rgba(46, 204, 113, 0.2);
-  }
-`;
-
-const PlatformNote = styled.div`
-  font-size: 12px;
-  color: #666;
-  text-align: center;
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  line-height: 1.5;
-  background-color: #f8f9fa;
-  border: 1px dashed #bbb;
-  border-radius: 8px;
-  padding: 10px;
-  width: 100%;
-`;
-
-const TwitterTipHeading = styled.div`
-  font-size: 14px;
-  font-weight: 600;
-  color: #2980b9;
-  margin-bottom: 10px;
-  width: 100%;
-`;
-
-const TwitterTipText = styled.div`
-  font-size: 13px;
-  color: #555;
-  margin-bottom: 10px;
-  line-height: 1.4;
-  width: 100%;
-  text-align: left;
-`;
-
-const TwitterStepList = styled.div`
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
-
-const TwitterStep = styled.div`
-  font-size: 13px;
-  color: #555;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 0;
-  text-align: left;
-  
-  span {
-    font-weight: bold;
-    color: #2980b9;
-    width: 18px;
-    height: 18px;
-    background-color: #e1f0fa;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-  }
-`;
-
-const TwitterLinkButton = styled.button`
-  background: #1DA1F2;
-  border: none;
-  color: white;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 6px 10px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  transition: all 0.2s;
-
-  &:hover {
-    background-color: #0c85d0;
-    transform: translateY(-1px);
-  }
-
-  &:disabled {
-    background-color: #95a5a6;
-    cursor: not-allowed;
-    transform: none;
-  }
-  
-  &::before {
-    content: "🔗";
-    margin-right: 4px;
-    font-size: 12px;
-  }
-`;
-
-const TwitterActionButton = styled.button`
-  background-color: #2ecc71;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(46, 204, 113, 0.2);
-
-  &:hover {
-    background-color: #27ae60;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(46, 204, 113, 0.25);
-  }
-
-  &:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 2px rgba(46, 204, 113, 0.2);
-  }
-`;
-
-const TwitterTipHighlight = styled.div`
-  background-color: #f0f7fb;
-  border-left: 4px solid #3498db;
-  padding: 8px 12px;
-  margin-top: 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #2980b9;
-  width: 100%;
-  text-align: left;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  
-  &:before {
-    content: "💡";
-    margin-right: 5px;
-  }
-`;
-
-const EnhancedConnectButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #3498db;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 15px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 6px rgba(52, 152, 219, 0.3);
-  
-  &:hover {
-    background-color: #2980b9;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(52, 152, 219, 0.4);
-  }
-  
-  &:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
-  }
-`;
-
-const WalletPromptIcon = styled.div`
-  font-size: 40px;
-  color: #3498db;
-  margin-bottom: 10px;
-`;
-
-const WalletPromptTitle = styled.div`
-  font-size: 18px;
-  font-weight: 600;
-  color: #2980b9;
-  margin-bottom: 10px;
-`;
-
-const WalletFeaturesList = styled.ul`
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
-
-const WalletFeature = styled.li`
-  font-size: 14px;
-  color: #555;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 0;
-  text-align: left;
-  
-  span {
-    font-weight: bold;
-    color: #2980b9;
-    width: 18px;
-    height: 18px;
-    background-color: #e1f0fa;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-  }
-`;
-
-const FeatureIcon = styled.span`
-  font-size: 18px;
-  color: #2980b9;
-`;
-
-const FeatureText = styled.span`
-  flex: 1;
-  font-size: 14px;
-  color: #555;
+  line-height: 1;
+  margin-right: 8px;
 `;
 
 export default App;
