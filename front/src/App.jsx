@@ -317,9 +317,12 @@ const App = () => {
 
   // 处理社交媒体用户名输入
   const handleUsernameChange = (e) => {
-    setUsername(e.target.value);
-    // 当用户名更改时重置预览
-    setShowPreview(false);
+    const value = e.target.value;
+    setUsername(value);
+    // 当用户名更改时重置预览，但不改变焦点
+    if (showPreview) {
+      setShowPreview(false);
+    }
   };
 
   // 重置预览
@@ -952,7 +955,7 @@ const MainContent = styled.main`
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 15px 10px; // 上下15px，左右10px的间距
+  padding: 15px 5px; // 上下15px，左右减少到5px
   position: relative;
   background-color: #f5f5f5;
 `;
@@ -967,7 +970,7 @@ const Grid = styled.div`
   overflow: auto;
   width: auto; // 自适应宽度
   max-width: 95%;
-  margin: 15px 10px; // 上下15px，左右10px的间距
+  margin: 15px 5px; // 上下15px，左右减少到5px
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
   border: 1px solid rgba(200, 200, 200, 0.5);
 `;
@@ -1153,10 +1156,16 @@ const ImagePreview = styled.div`
 const PreviewImage = styled.img`
   width: 100px;
   height: 100px;
-  border-radius: 50%;
+  border-radius: 10px;
   object-fit: cover;
   border: 3px solid #e6f2ff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+  
+  &:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
 `;
 
 const AccountButton = styled.button`
