@@ -185,14 +185,15 @@ const App = () => {
   // 修改计算网格大小的方法，使用固定尺寸
   useEffect(() => {
     // 根据可用屏幕宽度计算可以容纳的格子数量
-    const availableWidth = windowSize.width - 20; // 减去左右边距
-    const tileSize = 44.2; // 固定格子大小为44.2px
+    const isMobile = window.innerWidth <= 768;
+    const availableWidth = windowSize.width - (isMobile ? 20 : 40);
+    const tileSize = isMobile ? 32 : 44.2; // 移动端使用更小的格子尺寸
     
     // 计算能容纳的格子数量
     const calculatedGridSize = Math.floor(availableWidth / tileSize);
     
-    // 确保网格大小至少为10，最多为30（防止格子过多导致性能问题）
-    const newGridSize = Math.max(10, Math.min(30, calculatedGridSize));
+    // 确保网格大小至少为8（移动设备）或10（桌面），最多为30
+    const newGridSize = Math.max(isMobile ? 8 : 10, Math.min(30, calculatedGridSize));
     setGridSize(newGridSize);
   }, [windowSize]);
 
@@ -1309,25 +1310,29 @@ const AppHeader = styled.header`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 30px; /* 减小垂直内边距，从15px减小到12px */
-  background: #f5f5f5;
-  margin: 14px 15px 0; /* 减少上边距1px，将下边距设为0 */
-  border-radius: 15px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  width: calc(100% - 30px);
-  z-index: 10;
+  padding: 12px 15px;
+  background-color: white;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  
+  @media (max-width: 768px) {
+    padding: 8px 10px;
+    flex-direction: column;
+  }
 `;
 
 const MainContent = styled.main`
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
-  padding: 0; /* 移除内边距 */
+  padding: 0;
   position: relative;
-  background-color: #ffffff; /* 背景颜色修改为白色 */
-  margin-top: 0; /* 确保与顶部区域无间距 */
+  background-color: #ffffff;
+  overflow-x: hidden;
 `;
 
 const GridContainer = styled.div`
@@ -1336,21 +1341,32 @@ const GridContainer = styled.div`
   justify-content: center;
   align-items: center;
   padding: 10px;
-  margin-top: 0; /* 移除顶部外边距 */
+  margin-top: 0;
+  overflow-x: hidden;
+  
+  @media (max-width: 768px) {
+    padding: 5px;
+  }
 `;
 
 const Grid = styled.div`
   display: grid;
-  grid-template-columns: repeat(${props => props.$gridSize}, 45.2px); // 增大格子宽度为45.2px
-  grid-template-rows: repeat(${props => props.$gridSize}, 45.2px); // 增大格子高度为45.2px
+  grid-template-columns: repeat(${props => props.$gridSize}, 45.2px);
+  grid-template-rows: repeat(${props => props.$gridSize}, 45.2px);
   gap: 1px;
-  background-color: #ffffff; // 白色背景
+  background-color: #ffffff;
   border-radius: 8px;
-  overflow: auto;
-  width: auto;
-  margin: 5px; /* 设置四周边距为5px */
+  margin: 5px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(200, 200, 200, 0.3); /* 减轻边框颜色 */
+  border: 1px solid rgba(200, 200, 200, 0.3);
+  
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(${props => props.$gridSize}, 1fr);
+    grid-template-rows: repeat(${props => props.$gridSize}, 1fr);
+    width: 100%;
+    gap: 2px;
+    margin: 0;
+  }
 `;
 
 // 新增模态框相关样式
@@ -1572,6 +1588,12 @@ const StyledWalletConnected = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
+  
+  @media (max-width: 768px) {
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
 `;
 
 const StyledAccountInfo = styled.div`
@@ -1645,6 +1667,11 @@ const StyledLogoutButton = styled.button`
 
   &:hover {
     background-color: #f2dede;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 6px 10px;
+    font-size: 13px;
   }
 `;
 
@@ -1818,33 +1845,33 @@ const CustomColorInput = styled.input`
 // 修改浮动操作按钮样式
 const FloatingActionButton = styled.button`
   position: fixed;
-  bottom: 30px;
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  width: 230px;
-  height: 50px;
-  border-radius: 25px;
-  background-color: #00B7FF; // 更鲜艳的蓝色
+  background-color: #2196f3;
   color: white;
+  border: none;
+  border-radius: 30px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 1000;
   display: flex;
   align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 10px rgba(0, 183, 255, 0.4);
-  border: none;
-  cursor: pointer;
-  z-index: 100;
-  transition: all 0.3s;
-  font-size: 16px;
-  font-weight: 500;
   
   &:hover {
-    background-color: #00A5E6;
-    transform: translateX(-50%) translateY(-2px);
-    box-shadow: 0 6px 15px rgba(0, 183, 255, 0.5);
+    background-color: #1976d2;
+    box-shadow: 0 6px 14px rgba(33, 150, 243, 0.4);
   }
   
-  &:active {
-    transform: translateX(-50%) translateY(0);
+  @media (max-width: 768px) {
+    bottom: 15px;
+    padding: 10px 20px;
+    font-size: 14px;
+    width: auto;
   }
 `;
 
@@ -1878,7 +1905,14 @@ const Logo = styled.div`
   display: flex;
   align-items: center;
   margin-right: auto;
-  height: 40px; /* 设置固定高度以确保顶栏高度稳定 */
+  height: 40px;
+  
+  @media (max-width: 768px) {
+    margin-right: 0;
+    margin-bottom: 8px;
+    width: 100%;
+    justify-content: center;
+  }
 `;
 
 const LogoIcon = styled.span`
@@ -1898,29 +1932,43 @@ const LogoTextGroup = styled.div`
 `;
 
 const LogoText = styled.h1`
-  font-size: 26px; /* 从22px增大到26px */
+  font-size: 26px;
   font-weight: 700;
   margin: 0;
   color: #333;
   letter-spacing: 0.5px;
-  line-height: 1.2; /* 添加行高控制 */
+  line-height: 1.2;
+  
+  @media (max-width: 768px) {
+    font-size: 22px;
+  }
 `;
 
 const LogoSubtitle = styled.span`
-  font-size: 14px; /* 从12px增大到14px */
+  font-size: 14px;
   color: #888;
-  margin-top: 0px; /* 调整上边距 */
-  line-height: 1.2; /* 添加行高控制 */
+  margin-top: 0px;
+  line-height: 1.2;
+  
+  @media (max-width: 768px) {
+    font-size: 12px;
+  }
 `;
 
 // 钱包部分样式
 const WalletSection = styled.div`
   display: flex;
   align-items: center;
-  border-radius: 10px;
   background-color: #e8f2fa;
-  padding: 10px 15px;
+  padding: 8px 12px;
+  border-radius: 10px;
   border: 1px solid #ddd;
+  
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: center;
+    padding: 6px 10px;
+  }
 `;
 
 export default App;

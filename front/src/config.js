@@ -45,7 +45,7 @@ export const ANVIL_CHAIN = {
 export const CONTRACT_CONFIG = {
     // 本地开发环境
     development: {
-        address: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e", // Hardhat默认部署地址
+        address: "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1", // Hardhat默认部署地址
         chainId: 31337, // Hardhat本地网络ID
     },
     // 测试网环境
