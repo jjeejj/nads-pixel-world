@@ -7,11 +7,13 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 contract BuyEarth is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     uint256 private constant EARTH_PRICE = 0.01 ether;
     struct Earth {
+        uint256 idx;
         uint color;
         uint price;
         string image_url;
     }
-    Earth[] private earths;
+    mapping (uint => Earth) private earthsMap;
+    uint[] public earthPurchasedIdxArr;
 
     event EarthPurchased(
         uint256 indexed idx,
@@ -37,22 +39,23 @@ contract BuyEarth is Initializable, UUPSUpgradeable, OwnableUpgradeable {
             msg.value == EARTH_PRICE,
             "Invalid payment, please send 0.01 MON"
         );
-        // require(_idx < 100 && _idx >= 0, "Invalid index");
+        require(earthsMap[_idx].price == 0, "Earth already purchased");
 
         (bool send, ) = owner().call{value: msg.value}("");
         require(send, "Failed to send Ether");
 
-        earths[_idx] = Earth(color, msg.value, imageUrl);
-
+        earthsMap[_idx] = Earth(_idx, color, msg.value, imageUrl);
+        earthPurchasedIdxArr.push(_idx);
         emit EarthPurchased(_idx, color, msg.sender, msg.value);
     }
 
-    function getEarths() public view returns (Earth[100] memory) {
-        Earth[100] memory _earths;
-        for (uint256 i = 0; i < earths.length; i++) {
-            _earths[i] = earths[i];
+    function getEarths() public view returns (Earth[] memory result) {
+        uint purchasedLength = earthPurchasedIdxArr.length;
+       result = new Earth[](purchasedLength); 
+        for (uint i = 0; i < purchasedLength; i++) {
+            result[i] = earthsMap[earthPurchasedIdxArr[i]];
         }
-        return _earths;
+        return result;
     }
 
     /**
