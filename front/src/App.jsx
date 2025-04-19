@@ -1186,7 +1186,7 @@ const App = () => {
         <Logo>
           <LogoIcon>🧩</LogoIcon>
           <LogoTextGroup>
-            <LogoText>Pixel Grid</LogoText>
+            <LogoText>Nads Pixel World</LogoText>
             <LogoSubtitle>Blockchain-based pixel art canvas</LogoSubtitle>
           </LogoTextGroup>
         </Logo>
