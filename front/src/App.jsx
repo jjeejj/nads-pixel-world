@@ -1302,15 +1302,16 @@ const FullScreenContainer = styled.div`
   min-height: 100vh;
   width: 100%;
   background-color: #f5f5f5; /* 保持顶部区域的浅灰色背景 */
+  padding: 0; /* 确保没有内边距 */
 `;
 
 const AppHeader = styled.header`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 30px;
+  padding: 12px 30px; /* 减小垂直内边距，从15px减小到12px */
   background: #f5f5f5;
-  margin: 15px;
+  margin: 14px 15px 0; /* 减少上边距1px，将下边距设为0 */
   border-radius: 15px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   width: calc(100% - 30px);
@@ -1323,9 +1324,10 @@ const MainContent = styled.main`
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 5px; /* 调整内边距 */
+  padding: 0; /* 移除内边距 */
   position: relative;
   background-color: #ffffff; /* 背景颜色修改为白色 */
+  margin-top: 0; /* 确保与顶部区域无间距 */
 `;
 
 const GridContainer = styled.div`
@@ -1334,7 +1336,7 @@ const GridContainer = styled.div`
   justify-content: center;
   align-items: center;
   padding: 10px;
-  margin-top: 10px;
+  margin-top: 0; /* 移除顶部外边距 */
 `;
 
 const Grid = styled.div`
@@ -1876,31 +1878,39 @@ const Logo = styled.div`
   display: flex;
   align-items: center;
   margin-right: auto;
+  height: 40px; /* 设置固定高度以确保顶栏高度稳定 */
 `;
 
 const LogoIcon = styled.span`
-  font-size: 28px;
+  font-size: 32px; /* 从28px增大到32px */
   color: #00B7FF;
-  margin-right: 10px;
+  margin-right: 12px; /* 略微增加边距 */
+  display: flex;
+  align-items: center;
+  height: 100%;
 `;
 
 const LogoTextGroup = styled.div`
   display: flex;
   flex-direction: column;
+  justify-content: center; /* 添加垂直居中 */
+  height: 100%; /* 确保高度充满父容器 */
 `;
 
 const LogoText = styled.h1`
-  font-size: 22px;
+  font-size: 26px; /* 从22px增大到26px */
   font-weight: 700;
   margin: 0;
   color: #333;
   letter-spacing: 0.5px;
+  line-height: 1.2; /* 添加行高控制 */
 `;
 
 const LogoSubtitle = styled.span`
-  font-size: 12px;
+  font-size: 14px; /* 从12px增大到14px */
   color: #888;
-  margin-top: -2px;
+  margin-top: 0px; /* 调整上边距 */
+  line-height: 1.2; /* 添加行高控制 */
 `;
 
 // 钱包部分样式
