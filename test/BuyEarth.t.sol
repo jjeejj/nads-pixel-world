@@ -35,4 +35,12 @@ contract BuyEarthTest is Test {
             console.log("Earth[%d] color: %d", i, earths[i].color);
         }
     }
+
+    function test_BatchBuyEarths() public view{
+        BuyEarth.Earth[] memory earths = buyEarth.getEarths();
+        console.log("Earths array length: %d", earths.length);
+        for(uint i = 0; i < earths.length; i++) {
+            console.log("Earth[%d] color: %d", i, earths[i].color);
+        }
+    }
 }
