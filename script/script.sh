@@ -14,7 +14,7 @@ forge verify-contract \
     --rpc-url https://testnet-rpc.monad.xyz \
     --verifier sourcify \
     --verifier-url 'https://sourcify-api-monad.blockvision.org' \
-    0x2c0a88ACefA7b378d855031DD121bd95E3758FFA \
+    0x48451A8626f9BC607468F4862b6396fFFBCD084f \
     ./src/BuyEarth.sol:BuyEarth
 
 # monad testnet BuyEarthProxy contract
