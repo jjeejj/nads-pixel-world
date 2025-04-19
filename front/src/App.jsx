@@ -1243,9 +1243,9 @@ const App = () => {
                             </StyledConnected>
                           </StyledAccountDetails>
                         </StyledAccountInfo>
-                        <TestButton onClick={() => console.log("Monad Test clicked")}>
-                          Monad Test
-                        </TestButton>
+                        <NetworkButton onClick={openChainModal}>
+                          {chain?.name || "Unknown Network"}
+                        </NetworkButton>
                         <StyledLogoutButton onClick={disconnect}>
                           <StyledLogoutIcon>⬆️</StyledLogoutIcon>
                           Logout
@@ -1882,8 +1882,8 @@ const CustomizeIcon = styled.span`
   margin-right: 8px;
 `;
 
-// 添加Monad Test按钮样式
-const TestButton = styled.button`
+// 替换TestButton为NetworkButton样式
+const NetworkButton = styled.button`
   background-color: #e8f2fa;
   color: #3498db;
   border: none;
@@ -1897,6 +1897,12 @@ const TestButton = styled.button`
   
   &:hover {
     background-color: #d1e6f9;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 6px 12px;
+    font-size: 14px;
+    margin: 5px;
   }
 `;
 
