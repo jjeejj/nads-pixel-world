@@ -1,6 +1,8 @@
-# PixelGrid - 区块链像素艺术平台
+# Nads Pixel World - Nads 区块链像素艺术平台
 
-PixelGrid是一个基于区块链的像素艺术创作平台，让用户可以购买、自定义并拥有网格中的像素方块。每个方块都可以设置颜色和上传图片，所有权记录在区块链上，确保数字资产的真实性和永久性。
+Nads Pixel World 是一个基于区块链的像素艺术创作平台，让用户可以购买、自定义并拥有网格中的像素方块。每个方块都可以设置颜色和上传图片，所有权记录在区块链上，确保数字资产的真实性和永久性。
+
+预览地址：https://nads-pixel-world.vercel.app/
 
 ## 项目特点
 
@@ -26,8 +28,8 @@ PixelGrid是一个基于区块链的像素艺术创作平台，让用户可以�
 
 1. **克隆仓库**
    ```bash
-   git clone https://github.com/jjeejj/pixel-grid-chain.git
-   cd pixel-grid-chain
+   git clone https://github.com/jjeejj/nads-pixel-world.git
+   cd nads-pixel-world
    ```
 
 2. **安装依赖**
@@ -52,7 +54,11 @@ PixelGrid是一个基于区块链的像素艺术创作平台，让用户可以�
    ```bash
    # src
    forge build
-   forge script script/BuyEarth.s.sol --rpc-url <your-network-rpc> --private-key <your-private-key> --broadcast
+   forge script ./script/BuyEarth.s.sol --rpc-url Anvil --broadcast # 单独部署 BuyEarth
+   forge script ./script/BuyEarthProxy.s.sol --rpc-url Anvil --broadcast # 单独部署 BuyEarthProxy
+   forge script ./script/UpgradeBuyEarth.s.sol --rpc-url Anvil --broadcast # 升级合约
+   forge script ./script/BuyEarthProxyUUPS.s.sol --rpc-url Anvil --broadcast # 同时部署 BuyEarth 和 BuyEarthProxy
+   forge script ./script/VerifyUpgrade.s.sol --rpc-url Anvil --broadcast # 验证升级是否成功
    ```
 
 ## 使用指南
@@ -64,7 +70,7 @@ PixelGrid是一个基于区块链的像素艺术创作平台，让用户可以�
 
 ## 贡献指南
 
-欢迎为PixelGrid项目做出贡献！请遵循以下步骤：
+欢迎为 Nads Pixel World 项目做出贡献！请遵循以下步骤：
 
 1. Fork本仓库
 2. 创建您的特性分支 (`git checkout -b feature/amazing-feature`)
