@@ -16,7 +16,7 @@ contract BuyEarthTest is Test {
     function test_BuyEarth() public {
         vm.prank(user);
         vm.deal(user, 1 ether);
-        buyEarth.buyEarth{value: 0.01 ether}(100, 2, "");
+        buyEarth.buyEarth{value: 0.01 ether}(100, "#FFFFFF", "");
         console.log("Owner balance: %s wei", address(owner).balance);
         console.log("User balance: %s wei", address(user).balance);
     }
@@ -25,7 +25,7 @@ contract BuyEarthTest is Test {
         vm.prank(user);
         vm.deal(user, 1 ether);
         vm.expectRevert();
-        buyEarth.buyEarth{value: 0.00001 ether}(1, 2, "");
+        buyEarth.buyEarth{value: 0.00001 ether}(1, "#FFFFFF", "");
     }
 
     function test_getEarths() public view{

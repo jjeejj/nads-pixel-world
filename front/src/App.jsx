@@ -204,7 +204,7 @@ const App = () => {
       // 创建备用数据
       const newData = Array(gridSize * gridSize).fill().map((_, index) => ({ 
         idx: index,
-        color: 0, 
+        color: "", 
         price: 0, 
         image_url: "" 
       }));
@@ -235,9 +235,16 @@ const App = () => {
                 // 记录最大的idx值
                 maxIdx = Math.max(maxIdx, idx);
                 
+                // 确保颜色值的处理
+                let colorValue = earth.color;
+                // 将颜色处理简化，空字符串或空值视为未购买
+                if (!colorValue || colorValue === "") {
+                  colorValue = "";
+                }
+                
                 processedEarths.push({
                   idx: idx,
-                  color: Number(earth.color || 0),
+                  color: colorValue,
                   price: Number(earth.price || 0),
                   image_url: earth.image_url || ""
                 });
@@ -262,7 +269,7 @@ const App = () => {
         // 初始化所有格子为空
         initialData = Array(requiredTiles).fill().map((_, index) => ({ 
           idx: index, // 使用index作为默认idx
-          color: 0, 
+          color: "", 
           price: 0, 
           image_url: "" 
         }));
@@ -285,18 +292,18 @@ const App = () => {
         // 创建备用数据
         const newData = Array(gridSize * gridSize).fill().map((_, index) => ({ 
           idx: index,
-          color: 0, 
+          color: "#FFFFFF", 
           price: 0, 
           image_url: "" 
         }));
         setEarthData(newData);
-        showToast("Error processing contract data. Using default grid.", "error");
+        showToast("Failed to load contract data. Using placeholder data.", "error");
       }
     } else {
       // 如果没有合约数据，初始化空格子
       const newData = Array(gridSize * gridSize).fill().map((_, index) => ({ 
         idx: index,
-        color: 0, 
+        color: "#FFFFFF", 
         price: 0, 
         image_url: "" 
       }));
@@ -446,7 +453,7 @@ const App = () => {
           // 检查Twitter头像获取是否成功
           if (platform === 'twitter' && !avatarUrl) {
             setTwitterFetchFailed(true);
-            showToast("Failed to fetch Twitter avatar, please try manual method", "error");
+            showToast("Unable to automatically obtain Twitter avatar, please follow the instructions to manually obtain it", "error");
             return;
           }
       } catch (error) {
@@ -454,7 +461,7 @@ const App = () => {
           
           if (platform === 'twitter') {
             setTwitterFetchFailed(true);
-            showToast("Failed to fetch Twitter avatar, please try manual method", "error");
+            showToast("Unable to automatically obtain Twitter avatar, please follow the instructions to manually obtain it", "error");
             return;
           }
           
@@ -466,7 +473,7 @@ const App = () => {
         if (!avatarUrl) {
           if (platform === 'twitter') {
             setTwitterFetchFailed(true);
-            showToast("Failed to fetch Twitter avatar, please try manual method", "error");
+            showToast("Unable to automatically obtain Twitter avatar, please follow the instructions to manually obtain it", "error");
           } else {
             showToast(`Failed to fetch ${platform === 'github' ? 'GitHub' : ''} avatar`, "error");
           }
@@ -532,7 +539,7 @@ const App = () => {
 
     // 检查方块是否已被购买 - 使用idx字段
     const earth = earthData[index];
-    const hasColor = earth.color !== 0;
+    const hasColor = earth.color && earth.color !== "";
     const hasImage = earth.image_url && earth.image_url.trim() !== "";
     const isPurchased = hasColor || hasImage;
     
@@ -564,14 +571,15 @@ const App = () => {
     const hasColor = selectedColor !== 0;
     const hasImage = imageUrl.trim() !== "";
     
+    // 允许只提供图片URL，不再要求必须选择颜色
     if (!hasColor && !hasImage) {
-      showToast("Please select a color or provide an image URL", "error");
+      showToast("Please provide an image URL", "error");
       return;
     }
 
     // 检查选中的方块是否已经被购买
     const selectedEarth = earthData[selectedTile];
-    if (selectedEarth && (selectedEarth.color !== 0 || (selectedEarth.image_url && selectedEarth.image_url.trim() !== ""))) {
+    if (selectedEarth && ((selectedEarth.color && selectedEarth.color !== "") || (selectedEarth.image_url && selectedEarth.image_url.trim() !== ""))) {
       showToast("This tile is already purchased. Please select another tile.", "error");
       setSelectedTile(null);
       return;
@@ -586,7 +594,22 @@ const App = () => {
 
     // 在控制台记录自定义颜色的使用
     if (colorId === 7) {
-      console.log(`使用自定义颜色: ${customColor}`);
+      console.log(`Using custom color: ${customColor}`);
+    }
+
+    // 准备实际要传递的颜色值（字符串形式）
+    let colorValue = ""; // 默认为空字符串
+    if (colorId === 0) {
+      colorValue = ""; // 未选择颜色，传空字符串
+    } else if (colorId === 7) {
+      colorValue = customColor; // 自定义颜色
+    } else if (colorMap[colorId]) {
+      colorValue = colorMap[colorId]; // 预设颜色
+    }
+
+    // 如果用户没有选择颜色，也没有提供图片，默认设置为空字符串
+    if (!hasColor && !hasImage) {
+      colorValue = "";
     }
 
     // 显示正在处理的提示
@@ -596,8 +619,8 @@ const App = () => {
       // 位置索引就是selectedTile，它是视觉上的位置索引
       const positionIdx = selectedTile;
       
-      console.log(`购买格子: 位置索引=${positionIdx}, 颜色=${colorId}, 图片URL=${finalImageUrl}`);
-      console.log(`当前网格大小: ${gridSize}x${gridSize}, 总格子数: ${earthData.length}`);
+      console.log(`Buying tile: position=${positionIdx}, color=${colorValue}`);
+      console.log(`Current grid size: ${gridSize}x${gridSize}, total tiles: ${earthData.length}`);
       
       // 检查是否有效的位置索引
       if (isNaN(positionIdx) || positionIdx < 0) {
@@ -606,34 +629,35 @@ const App = () => {
       }
       
       const config = {
-        args: [positionIdx, colorId, finalImageUrl],
+        args: [positionIdx, colorValue, finalImageUrl],
         onSettled: (data, error) => {
           if (error) {
-            console.error("交易处理时出错:", error);
+            console.error("Transaction processing error:", error);
             // 处理错误
             handleTransactionError(error);
           } else if (data) {
-            console.log("交易已提交:", data);
+            console.log("Transaction submitted:", data);
           }
         },
         onSuccess: (data) => {
-          console.log("交易成功发送:", data);
+          console.log("Transaction sent successfully:", data);
           showToast("Transaction submitted successfully!", "info");
         }
       };
       
       // 在发送交易前进行最后确认
-      console.log("准备发送交易，参数:", config.args);
+      console.log("Preparing to send transaction, params:", config.args);
       buyEarthWrite(config);
     } catch (error) {
-      console.error("购买方块错误:", error);
+      console.error("Error buying tile:", error);
       handleTransactionError(error);
     }
+    // setShowSettingsModal(false)
   };
 
   // 处理交易错误的统一函数
   const handleTransactionError = (error) => {
-    console.error("交易错误详情:", error);
+    console.error("Transaction error details:", error);
     
     // 错误消息
     let errorMessage = "Transaction failed";
@@ -646,7 +670,7 @@ const App = () => {
       // 检查各种可能的错误类型
       if (errorLower.includes("slice") && errorLower.includes("out-of-bounds")) {
         errorMessage = "Contract data error: Please try refreshing the page and try again.";
-        console.log("检测到Slice错误，建议刷新页面");
+        console.log("Slice error detected, please refresh the page");
         // 在出现slice错误时尝试刷新数据
         setTimeout(() => {
           refetch();
@@ -679,7 +703,7 @@ const App = () => {
         }
       }
     } catch (parseError) {
-      console.error("解析错误信息时出错:", parseError);
+      console.error("Error parsing error message:", parseError);
     }
     
     // 显示友好的错误消息
@@ -694,7 +718,9 @@ const App = () => {
       showToast("Color deselected", "info");
     } else {
       setSelectedColor(colorValue);
-      showToast(`Color ${colorMap[colorValue]} selected`, "info");
+      // 获取颜色的可读名称或者直接显示颜色值
+      const colorName = colorValue === 7 ? "custom" : Object.entries(colorMap).find(([id, color]) => parseInt(id) === colorValue)?.[1] || colorValue;
+      showToast(`Color ${colorName} selected`, "info");
     }
   };
 
@@ -705,7 +731,7 @@ const App = () => {
     
     // 获取新的颜色值
     const newColor = e.target.value;
-    console.log("选择了新的自定义颜色:", newColor);
+    console.log("Selected new custom color:", newColor);
     
     // 立即更新状态
     setCustomColor(newColor);
@@ -713,13 +739,13 @@ const App = () => {
     // 自动选择自定义颜色选项（如果还没选中）
     if (selectedColor !== 7) {
       setSelectedColor(7);
-      showToast(`自定义颜色已选择: ${newColor}`, "info");
+      showToast(`Custom color selected: ${newColor}`, "info");
     }
   };
 
   // 在组件顶层添加useEffect钩子，确保颜色选择器初始化正确
   useEffect(() => {
-    console.log("全局监控customColor变化:", customColor);
+    console.log("Global monitoring of customColor change:", customColor);
     
     // 短暂延迟以确保DOM已更新
     setTimeout(() => {
@@ -895,7 +921,7 @@ const App = () => {
     try {
       // 计算购买的格子数量
       const purchasedCount = earthData.filter(earth => 
-        earth && (earth.color !== 0 || (earth.image_url && earth.image_url.trim() !== ""))
+        earth && ((earth.color && earth.color !== "") || (earth.image_url && earth.image_url.trim() !== ""))
       ).length;
       
       // 检查剩余空格子是否低于总格子的20%
@@ -968,23 +994,14 @@ const App = () => {
           }
           
           // 检查是否有颜色和图片
-          const hasColor = earth.color !== 0;
+          const hasColor = earth.color && earth.color !== "";
           const hasImage = earth.image_url && earth.image_url.trim() !== "";
           
           // 确定背景颜色
           let backgroundColor;
           if (hasColor) {
-          if (earth.color === 7) {
-              // 对于自定义颜色，使用紫色作为默认显示，但在实际应用中可能需要从合约获取实际颜色
-              backgroundColor = customColor || "#FF00FF";
-              console.log(`渲染自定义颜色方块: ${backgroundColor}`);
-            } else if (colorMap[earth.color]) {
-              backgroundColor = colorMap[earth.color];
-          } else {
-              // 颜色值无效，使用默认灰色
-              console.warn(`无效的颜色值: ${earth.color}，使用默认颜色`);
-              backgroundColor = '#AAAAAA';
-            }
+            // 使用格子的颜色
+            backgroundColor = earth.color;
           } else {
             // 如果没有颜色，使用白色作为背景
             backgroundColor = '#FFFFFF';
@@ -1066,37 +1083,6 @@ const App = () => {
           
           <ModalBody>
             <SettingsSection>
-              <SectionTitle>Select Color</SectionTitle>
-            <ColorSelection>
-              <ColorPicker>
-                {Object.entries(colorMap).map(([value, color]) => {
-                  const intValue = parseInt(value);
-                  // 自定义颜色选项特殊处理
-                  if (color === "custom") {
-                    return (
-                        <CustomColorSelector 
-                        key={value} 
-                          value={customColor}
-                          onChange={handleCustomColorChange}
-                          selected={selectedColor === intValue}
-                          onClick={(e) => handleColorOptionClick(intValue, e)}
-                        />
-                      );
-                    }
-                  return (
-                    <ColorOption
-                      key={value}
-                        style={{ backgroundColor: color }}
-                      $selected={selectedColor === intValue}
-                        onClick={(e) => handleColorOptionClick(intValue, e)}
-                      />
-                  );
-                })}
-              </ColorPicker>
-            </ColorSelection>
-            </SettingsSection>
-
-            <SettingsSection>
               <SectionTitle>Set Image</SectionTitle>
               <InputGroup>
                 <Select
@@ -1132,6 +1118,53 @@ const App = () => {
                 />
                 <FetchButton onClick={handleGetAvatarUrl}>Fetch</FetchButton>
               </InputGroup>
+              
+              {/* Twitter获取失败时显示手动指引 */}
+              {twitterFetchFailed && platform === 'twitter' && (
+                <TwitterManualGuide>
+                  <ManualGuideHeader>
+                    <SearchIcon>🔍</SearchIcon> Fetch Failed, Try Manual Method
+                  </ManualGuideHeader>
+                  
+                  <ManualGuideDescription>
+                    Twitter avatar fetch failed, follow these steps to get it manually:
+                  </ManualGuideDescription>
+                  
+                  <ManualGuideStepList>
+                    <ManualGuideStep>
+                      <StepNumber>1.</StepNumber>
+                      <TwitterPhotoButton 
+                        href={`https://x.com/${username}/photo`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                      >
+                        <LinkIcon>🔗</LinkIcon> Open Twitter Photo Page
+                      </TwitterPhotoButton>
+                    </ManualGuideStep>
+                    
+                    <ManualGuideStep>
+                      <StepNumber>2.</StepNumber>
+                      <StepText>Right-click on the image → Select "Copy Image Address"</StepText>
+                    </ManualGuideStep>
+                    
+                    <ManualGuideStep>
+                      <StepNumber>3.</StepNumber>
+                      <SwitchToCustomButton onClick={() => setPlatform('custom')}>
+                        Switch to Custom URL
+                      </SwitchToCustomButton>
+                    </ManualGuideStep>
+                    
+                    <ManualGuideStep>
+                      <StepNumber>4.</StepNumber>
+                      <StepText>Paste the copied image URL → Click "Get Avatar"</StepText>
+                    </ManualGuideStep>
+                  </ManualGuideStepList>
+                  
+                  <ManualGuideTip>
+                    <TipIcon>💡</TipIcon> Image URL should start with "pbs.twimg.com/profile_images"
+                  </ManualGuideTip>
+                </TwitterManualGuide>
+              )}
 
               {/* 图片预览 */}
               {showPreview && (
@@ -1161,7 +1194,7 @@ const App = () => {
     // 当颜色变化时
     const handleChange = (e) => {
       const newColor = e.target.value;
-      console.log("颜色选择器选择了新颜色:", newColor);
+      console.log("Color picker selected new color:", newColor);
       onChange(e);
     };
 
@@ -2014,6 +2047,102 @@ const WalletSection = styled.div`
     justify-content: center;
     padding: 6px 10px;
   }
+`;
+
+const TwitterManualGuide = styled.div`
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e1e8ed;
+`;
+
+const ManualGuideHeader = styled.div`
+  font-size: 16px;
+  font-weight: 600;
+  color: #1da1f2; /* Twitter蓝 */
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  
+  &:before {
+    content: "ℹ️";
+    margin-right: 8px;
+  }
+`;
+
+const ManualGuideDescription = styled.div`
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 15px;
+`;
+
+const ManualGuideStepList = styled.ul`
+  list-style-type: none;
+  padding-left: 0;
+`;
+
+const ManualGuideStep = styled.li`
+  margin: 8px 0;
+  font-size: 14px;
+  color: #333;
+  display: flex;
+  align-items: center;
+  line-height: 1.5;
+`;
+
+const StepNumber = styled.span`
+  font-weight: 600;
+  margin-right: 10px;
+`;
+
+const StepText = styled.span`
+  font-weight: 500;
+`;
+
+const TwitterPhotoButton = styled.a`
+  color: #1da1f2;
+  text-decoration: none;
+  font-weight: 500;
+  
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+const LinkIcon = styled.span`
+  margin-right: 5px;
+`;
+
+const SwitchToCustomButton = styled.button`
+  margin-top: 10px;
+  background-color: #1da1f2;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 15px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: #0c85d0;
+  }
+`;
+
+const ManualGuideTip = styled.div`
+  font-size: 12px;
+  color: #666;
+  margin-top: 10px;
+`;
+
+const TipIcon = styled.span`
+  margin-right: 5px;
+`;
+
+const SearchIcon = styled.span`
+  margin-right: 5px;
 `;
 
 export default App;

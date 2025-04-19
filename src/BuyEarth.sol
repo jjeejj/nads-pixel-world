@@ -8,7 +8,7 @@ contract BuyEarth is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     uint256 private constant EARTH_PRICE = 0.01 ether;
     struct Earth {
         uint256 idx;
-        uint color;
+        string color;
         uint price;
         string image_url;
     }
@@ -17,7 +17,7 @@ contract BuyEarth is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 
     event EarthPurchased(
         uint256 indexed idx,
-        uint color,
+        string color,
         address buyer,
         uint256 price
     );
@@ -32,7 +32,7 @@ contract BuyEarth is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 
     function buyEarth(
         uint256 _idx,
-        uint color,
+        string memory color,
         string memory imageUrl
     ) public payable {
         require(

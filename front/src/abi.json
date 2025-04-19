@@ -23,8 +23,8 @@
             },
             {
                 "name": "color",
-                "type": "uint256",
-                "internalType": "uint256"
+                "type": "string",
+                "internalType": "string"
             },
             {
                 "name": "imageUrl",
@@ -71,8 +71,8 @@
                     },
                     {
                         "name": "color",
-                        "type": "uint256",
-                        "internalType": "uint256"
+                        "type": "string",
+                        "internalType": "string"
                     },
                     {
                         "name": "price",
@@ -172,9 +172,9 @@
             },
             {
                 "name": "color",
-                "type": "uint256",
+                "type": "string",
                 "indexed": false,
-                "internalType": "uint256"
+                "internalType": "string"
             },
             {
                 "name": "buyer",
