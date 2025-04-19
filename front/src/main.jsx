@@ -76,7 +76,7 @@ console.log('应用正在连接到:', chains[0].name);
 console.log('RPC URL:', chains[0].rpcUrls.default.http[0]);
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
+  // <React.StrictMode>
     <WagmiConfig config={wagmiConfig}>
       <RainbowKitProvider 
         chains={chains} 
@@ -89,5 +89,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <App />
       </RainbowKitProvider>
     </WagmiConfig>
-  </React.StrictMode>,
+  // </React.StrictMode>,
 );

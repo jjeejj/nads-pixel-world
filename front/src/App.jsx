@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount, useConnect, useDisconnect, useContractRead, useContractWrite, useWaitForTransaction, useNetwork } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { parseEther } from 'viem';
@@ -361,6 +361,15 @@ const App = () => {
     }
   }, [isSuccess, isError, error, refetch]);
 
+  // 添加防抖函数
+  const debounce = (func, delay) => {
+    let timeout;
+    return (...args) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), delay);
+    };
+  };
+
   // 处理图片URL输入变化
   const handleImageUrlChange = (e) => {
     setImageUrl(e.target.value);
@@ -375,12 +384,16 @@ const App = () => {
     setTwitterFetchFailed(false);
   };
 
-  // 处理社交媒体用户名输入
-  const handleUsernameChange = (e) => {
+  // 处理社交媒体用户名输入 - 使用useCallback优化，避免重新创建函数导致重渲染
+  const handleUsernameChange = useCallback((e) => {
+    // 移除阻止事件传播的代码，它可能会干扰正常的输入行为
+    // e.preventDefault();
+    // e.stopPropagation();
+    
     const value = e.target.value;
+    // 简化状态更新，使用常规方式设置状态
     setUsername(value);
-    // 移除这里的预览重置逻辑，防止输入时失去焦点
-  };
+  }, []); // 不依赖任何变量，确保函数稳定
 
   // 重置预览
   const resetPreview = () => {
@@ -1015,7 +1028,7 @@ const App = () => {
   };
 
   // 设置模态框组件
-  const SettingsModal = () => {
+  const SettingsModal = React.memo(() => {
     if (!showSettingsModal) return null;
     
     // 使用useEffect在组件挂载时强制更新自定义颜色
@@ -1026,6 +1039,17 @@ const App = () => {
         input.style.backgroundColor = customColor;
       });
     }, [customColor]);
+
+    // 添加useEffect来处理输入框的特殊焦点问题
+    useEffect(() => {
+      // 初始聚焦输入框
+      const inputEl = usernameInputRef.current;
+      if (inputEl) {
+        setTimeout(() => {
+          inputEl.focus();
+        }, 100);
+      }
+    }, []);
     
     return (
       <ModalOverlay onClick={(e) => {
@@ -1083,12 +1107,27 @@ const App = () => {
                   <option value="twitter">Twitter</option>
                   <option value="custom">Custom URL</option>
                 </Select>
-                    <Input
+                <Input
                   ref={usernameInputRef}
-                      type="text"
+                  type="text"
                   placeholder={platform === "custom" ? "Enter image URL" : `Enter ${platform === "github" ? "GitHub" : "Twitter"} username`}
-                  value={username}
-                  onChange={handleUsernameChange}
+                  defaultValue={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  onBlur={(e) => {
+                    // 检查是否因为点击了其他元素而失焦
+                    const relatedTarget = e.relatedTarget;
+                    // 如果不是因为点击了Fetch按钮或Select，就重新聚焦
+                    if (!relatedTarget || 
+                        (relatedTarget.tagName !== 'BUTTON' && 
+                         relatedTarget.tagName !== 'SELECT')) {
+                      // 为防止与其他点击事件冲突，使用短延时
+                      setTimeout(() => {
+                        if (usernameInputRef.current) {
+                          usernameInputRef.current.focus();
+                        }
+                      }, 10);
+                    }
+                  }}
                   autoComplete="off"
                 />
                 <FetchButton onClick={handleGetAvatarUrl}>Fetch</FetchButton>
@@ -1115,7 +1154,7 @@ const App = () => {
         </ModalContent>
       </ModalOverlay>
     );
-  };
+  });
 
   // 实现一个简单直接的CustomColorSelector组件
   const CustomColorSelector = ({ value, onChange, selected, onClick }) => {
