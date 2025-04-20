@@ -544,25 +544,25 @@ const App = () => {
     const isPurchased = hasColor || hasImage;
     
     if (isPurchased) {
-      showToast("This tile has already been purchased", "error");
+      showToast("This pixel has already been purchased", "error");
       return;
     }
 
     // 设置选中的方块索引为位置索引，而不是数据索引
     setSelectedTile(index);
-    showToast(`Tile #${index} selected`, "info");
+    showToast(`Pixel #${index} selected`, "info");
   };
 
   // 处理购买方块
   const handleBuyEarth = () => {
     if (selectedTile === null) {
-      showToast("Please select a tile first", "error");
+      showToast("Please select a pixel first", "error");
       return;
     }
 
     // 检查选择的格子索引是否在有效范围内
     if (selectedTile < 0 || selectedTile >= earthData.length) {
-      showToast("Selected tile is invalid, please select a different tile", "error");
+      showToast("Selected pixel is invalid, please select a different pixel", "error");
       setSelectedTile(null);
       return;
     }
@@ -580,7 +580,7 @@ const App = () => {
     // 检查选中的方块是否已经被购买
     const selectedEarth = earthData[selectedTile];
     if (selectedEarth && ((selectedEarth.color && selectedEarth.color !== "") || (selectedEarth.image_url && selectedEarth.image_url.trim() !== ""))) {
-      showToast("This tile is already purchased. Please select another tile.", "error");
+      showToast("This pixel is already purchased. Please select another pixel.", "error");
       setSelectedTile(null);
       return;
     }
@@ -1077,7 +1077,7 @@ const App = () => {
       }}>
         <ModalContent onClick={(e) => e.stopPropagation()}>
           <ModalHeader>
-            <ModalTitle>Tile Settings</ModalTitle>
+            <ModalTitle>Pixel Settings</ModalTitle>
             <CloseButton onClick={() => setShowSettingsModal(false)}>×</CloseButton>
           </ModalHeader>
           
@@ -1181,7 +1181,7 @@ const App = () => {
             </SettingsSection>
             
             <ActionButton onClick={handleBuyEarth}>
-              Purchase This Tile
+            I'll take it
             </ActionButton>
           </ModalBody>
         </ModalContent>
@@ -1259,7 +1259,7 @@ const App = () => {
           <LogoIcon>🧩</LogoIcon>
           <LogoTextGroup>
             <LogoText>Nads Pixel World</LogoText>
-            <LogoSubtitle>Blockchain-based pixel art canvas</LogoSubtitle>
+            <LogoSubtitle>Nads' Home, Build and Powered by Community.</LogoSubtitle>
           </LogoTextGroup>
         </Logo>
         <WalletSection>
@@ -1345,14 +1345,14 @@ const App = () => {
               return;
             }
             if (selectedTile === null) {
-              showToast("Please select a tile first", "error");
+              showToast("Please select a pixel first", "error");
             } else {
               setShowSettingsModal(true);
             }
           }}
-          title="Customize tile"
+          title="Customize pixel"
         >
-          <CustomizeIcon>🎨</CustomizeIcon> Customize This Tile
+          <CustomizeIcon>🎨</CustomizeIcon> Customize This Pixel
         </FloatingActionButton>
         </MainContent>
       
