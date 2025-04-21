@@ -573,7 +573,7 @@ const App = () => {
     
     // 允许只提供图片URL，不再要求必须选择颜色
     if (!hasColor && !hasImage) {
-      showToast("Please provide an image URL", "error");
+      showToast("Please provide an image URL or select a color", "error");
       return;
     }
 
@@ -611,7 +611,7 @@ const App = () => {
     // 如果用户没有选择颜色，也没有提供图片，默认设置为空字符串
     if (!hasColor && !hasImage) {
       colorValue = "";
-      showToast("Color or image not set", "error");
+      showToast("Please provide an image URL or select a color", "error");
       return;
     }
 
@@ -1117,7 +1117,7 @@ const App = () => {
             </ColorSelection>
             </SettingsSection>
             <SettingsSection>
-              <SectionTitle>Set Image</SectionTitle>
+              <SectionTitle>Set Image (Optional)</SectionTitle>
               <InputGroup>
                 <Select
                   value={platform}
