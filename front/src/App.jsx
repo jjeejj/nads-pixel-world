@@ -595,6 +595,7 @@ const App = () => {
     // 在控制台记录自定义颜色的使用
     if (colorId === 7) {
       console.log(`Using custom color: ${customColor}`);
+      console.log(`Selected color ID: ${colorId}, Custom color value: ${customColor}`);
     }
 
     // 准备实际要传递的颜色值（字符串形式）
@@ -739,7 +740,7 @@ const App = () => {
     setCustomColor(newColor);
     
     // 自动选择自定义颜色选项（如果还没选中）
-    if (selectedColor == 7) {
+    if (selectedColor !== 7) {
       setSelectedColor(7);
       showToast(`Custom color selected: ${newColor}`, "info");
     }
@@ -828,6 +829,7 @@ const App = () => {
     } else {
       setSelectedColor(colorValue);
       if (colorValue === 7) {
+        console.log(`选择了自定义颜色: ${customColor}`);
         showToast(`Custom color ${customColor} selected`, "info");
       } else {
         showToast(`Color ${colorMap[colorValue]} selected`, "info");
@@ -1227,6 +1229,8 @@ const App = () => {
     const handleChange = (e) => {
       const newColor = e.target.value;
       console.log("Color picker selected new color:", newColor);
+      // 确保选择了自定义颜色选项（colorId=7）
+      onClick(e); // 触发点击事件，设置selectedColor为7
       onChange(e);
     };
 
@@ -1268,6 +1272,11 @@ const App = () => {
             type="color"
             value={value}
             onChange={handleChange}
+            onClick={(e) => {
+              // 防止冒泡，确保不会触发两次点击事件
+              e.stopPropagation();
+              console.log("颜色选择器被点击，当前颜色值:", value);
+            }}
             style={{
               position: 'absolute',
               top: 0,
