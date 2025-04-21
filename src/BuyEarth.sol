@@ -11,8 +11,9 @@ contract BuyEarth is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         string color;
         uint price;
         string image_url;
+        address owner;
     }
-    mapping (uint => Earth) private earthsMap;
+    mapping(uint => Earth) private earthsMap;
     uint[] public earthPurchasedIdxArr;
 
     event EarthPurchased(
@@ -39,23 +40,33 @@ contract BuyEarth is Initializable, UUPSUpgradeable, OwnableUpgradeable {
             msg.value == EARTH_PRICE,
             "Invalid payment, please send 0.01 MON"
         );
-        require(earthsMap[_idx].price == 0, "Earth already purchased");
+        require(earthsMap[_idx].price == 0, "Pixel already purchased");
 
         (bool send, ) = owner().call{value: msg.value}("");
         require(send, "Failed to send Ether");
 
-        earthsMap[_idx] = Earth(_idx, color, msg.value, imageUrl);
+        earthsMap[_idx] = Earth(_idx, color, msg.value, imageUrl, msg.sender);
         earthPurchasedIdxArr.push(_idx);
         emit EarthPurchased(_idx, color, msg.sender, msg.value);
     }
 
     function getEarths() public view returns (Earth[] memory result) {
         uint purchasedLength = earthPurchasedIdxArr.length;
-       result = new Earth[](purchasedLength); 
+        result = new Earth[](purchasedLength);
         for (uint i = 0; i < purchasedLength; i++) {
             result[i] = earthsMap[earthPurchasedIdxArr[i]];
         }
         return result;
+    }
+
+     function getEarthByIdx(uint256 _idx) public view returns (Earth memory result) {
+        return earthsMap[_idx];
+    }
+
+    function updateEarthOwnByIdx(uint256 _idx, address owner) public onlyOwner {
+        require(earthsMap[_idx].idx == _idx , "Pixel not purchased");
+        require(earthsMap[_idx].owner == address(0) , "Pixel already has owner");
+        earthsMap[_idx].owner = owner;
     }
 
     /**
@@ -64,6 +75,5 @@ contract BuyEarth is Initializable, UUPSUpgradeable, OwnableUpgradeable {
      */
     function _authorizeUpgrade(
         address newImplementation
-    ) internal override onlyOwner {
-    }
+    ) internal override onlyOwner {}
 }
