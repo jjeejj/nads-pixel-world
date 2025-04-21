@@ -822,7 +822,7 @@ const App = () => {
     // 阻止事件冒泡
     if (e) e.stopPropagation();
     
-    if (selectedColor === colorValue) {
+    if (selectedColor === colorValue && colorValue !== 7) {
       // 如果用户点击已选中的颜色，取消选择
       setSelectedColor(0);
       showToast("Color deselected", "info");
@@ -1227,6 +1227,10 @@ const App = () => {
   const CustomColorSelector = ({ value, onChange, selected, onClick }) => {
     // 当颜色变化时
     const handleChange = (e) => {
+      // 只阻止事件冒泡，但不阻止默认行为
+      e.stopPropagation();
+      // 移除 e.preventDefault() 以允许颜色选择器正常打开
+      
       const newColor = e.target.value;
       console.log("Color picker selected new color:", newColor);
       // 确保选择了自定义颜色选项（colorId=7）
@@ -1273,8 +1277,9 @@ const App = () => {
             value={value}
             onChange={handleChange}
             onClick={(e) => {
-              // 防止冒泡，确保不会触发两次点击事件
+              // 只阻止事件冒泡，但不阻止默认行为
               e.stopPropagation();
+              // 移除 e.preventDefault() 以允许颜色选择器正常打开
               console.log("颜色选择器被点击，当前颜色值:", value);
             }}
             style={{
