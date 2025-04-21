@@ -610,6 +610,8 @@ const App = () => {
     // 如果用户没有选择颜色，也没有提供图片，默认设置为空字符串
     if (!hasColor && !hasImage) {
       colorValue = "";
+      showToast("Color or image not set", "error");
+      return;
     }
 
     // 显示正在处理的提示
@@ -619,7 +621,7 @@ const App = () => {
       // 位置索引就是selectedTile，它是视觉上的位置索引
       const positionIdx = selectedTile;
       
-      console.log(`Buying tile: position=${positionIdx}, color=${colorValue}`);
+      console.log(`Buying pixel: position=${positionIdx}, color=${colorValue}`);
       console.log(`Current grid size: ${gridSize}x${gridSize}, total tiles: ${earthData.length}`);
       
       // 检查是否有效的位置索引
@@ -649,7 +651,7 @@ const App = () => {
       console.log("Preparing to send transaction, params:", config.args);
       buyEarthWrite(config);
     } catch (error) {
-      console.error("Error buying tile:", error);
+      console.error("Error buying pixel:", error);
       handleTransactionError(error);
     }
     // setShowSettingsModal(false)
@@ -728,7 +730,7 @@ const App = () => {
   const handleCustomColorChange = (e) => {
     // 阻止事件冒泡，防止触发父元素的点击事件
     e.stopPropagation();
-    
+    console.log("Custom color changed:", e.target.value);
     // 获取新的颜色值
     const newColor = e.target.value;
     console.log("Selected new custom color:", newColor);
@@ -737,7 +739,7 @@ const App = () => {
     setCustomColor(newColor);
     
     // 自动选择自定义颜色选项（如果还没选中）
-    if (selectedColor !== 7) {
+    if (selectedColor == 7) {
       setSelectedColor(7);
       showToast(`Custom color selected: ${newColor}`, "info");
     }
@@ -793,7 +795,7 @@ const App = () => {
                   left: 0,
                   width: '100%',
                   height: '100%',
-                  opacity: 0,
+                  opacity: 0.01,
                   cursor: 'pointer'
                 }}
               />
@@ -1082,6 +1084,36 @@ const App = () => {
           </ModalHeader>
           
           <ModalBody>
+          <SettingsSection>
+              <SectionTitle>Select Color</SectionTitle>
+            <ColorSelection>
+              <ColorPicker>
+                {Object.entries(colorMap).map(([value, color]) => {
+                  const intValue = parseInt(value);
+                  // 自定义颜色选项特殊处理
+                  if (color === "custom") {
+                    return (
+                        <CustomColorSelector 
+                        key={value} 
+                          value={customColor}
+                          onChange={handleCustomColorChange}
+                          selected={selectedColor === intValue}
+                          onClick={(e) => handleColorOptionClick(intValue, e)}
+                        />
+                      );
+                    }
+                  return (
+                    <ColorOption
+                      key={value}
+                        style={{ backgroundColor: color }}
+                      $selected={selectedColor === intValue}
+                        onClick={(e) => handleColorOptionClick(intValue, e)}
+                      />
+                  );
+                })}
+              </ColorPicker>
+            </ColorSelection>
+            </SettingsSection>
             <SettingsSection>
               <SectionTitle>Set Image</SectionTitle>
               <InputGroup>
