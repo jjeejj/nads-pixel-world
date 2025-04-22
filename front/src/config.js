@@ -50,7 +50,8 @@ export const CONTRACT_CONFIG = {
     },
     // 测试网环境
     production: {
-        address: "0xf276667Bb7E4907c65F0C70A6337a0d7eE8039e7", // 替换为实际在Monad测试网上的合约地址
+        // address: "0xf276667Bb7E4907c65F0C70A6337a0d7eE8039e7", // 替换为实际在Monad测试网上的合约地址， 这个是有测试数据的 
+        address: "0x89d3aB33ED755C52A8C2AaC560a5bE7A81b0fa20",
         chainId: 10143, // Monad测试网ID
     }
 };

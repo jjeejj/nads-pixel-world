@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount, useConnect, useDisconnect, useContractRead, useContractWrite, useWaitForTransaction, useNetwork } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { parseEther } from 'viem';
+import { ethers } from 'ethers';
+import { BrowserProvider } from 'ethers';
 import styled from 'styled-components';
 import './App.css';
 import { getContractConfig } from './config';
@@ -161,13 +163,75 @@ const App = () => {
     address: contractAddress,
     abi: contractABI,
     functionName: 'getEarths',
-    watch: true,
+    watch: false, // 修改为false，避免持续监听导致重复渲染
     // 添加错误处理
     onError: (error) => {
       console.error("读取合约数据错误:", error);
       showToast("Failed to load contract data. Please try refreshing.", "error");
     }
   });
+  
+  // 添加对EarthPurchased事件的监听
+  const [eventData, setEventData] = useState(null);
+  
+  // 使用useEffect监听合约事件
+  useEffect(() => {
+    if (!contractAddress || !isConnected) return;
+    
+    // 创建provider和合约实例
+    const { ethereum } = window;
+    if (!ethereum) return;
+    
+    // 使用ethers v6的方式创建provider
+    const provider = new BrowserProvider(ethereum);
+    // 异步创建合约实例
+    const getContract = async () => {
+      try {
+        const signer = await provider.getSigner();
+        const contract = new ethers.Contract(contractAddress, contractABI, signer);
+    
+        // 监听EarthPurchased事件
+        const filter = contract.filters.EarthPurchased();
+        const listener = (idx, color, buyer, price) => {
+          console.log("检测到新的EarthPurchased事件:", { idx, color, buyer, price });
+          setEventData({ idx, color, buyer, price });
+          // 当事件触发时刷新数据
+          refetch();
+        };
+        
+        // 添加事件监听器
+        contract.on(filter, listener);
+        
+        // 返回清理函数
+        return contract;
+      } catch (error) {
+        console.error("创建合约实例失败:", error);
+        showToast("Failed to connect to contract. Please try again.", "error");
+        return null;
+      }
+    };
+    
+    // 执行异步函数并保存合约引用
+    let contractInstance;
+    getContract().then(contract => {
+      contractInstance = contract;
+    });
+    
+    // 组件卸载时移除监听器
+    return () => {
+      if (contractInstance) {
+        // 移除所有监听器
+        contractInstance.removeAllListeners();
+      }
+    };
+  }, [contractAddress, isConnected, refetch]);
+  
+  // 当事件数据更新时显示通知
+  useEffect(() => {
+    if (eventData) {
+      // showToast(`新的像素被购买! 索引: ${eventData.idx}`, "info");
+    }
+  }, [eventData]);
 
   // 监听窗口大小变化，动态调整格子数量
   useEffect(() => {
@@ -215,100 +279,103 @@ const App = () => {
 
   // 当合约数据更新或gridSize更改时，确保earthData大小足够
   useEffect(() => {
-    if (earthsData) {
-      try {
-        // 创建一个初始的空数组
-        let initialData = [];
-        
-        // 处理合约数据 - 使用idx字段而不是数组索引
-        let maxIdx = 0;
-        const processedEarths = [];
-        
-        // 安全地处理合约数据，防止解析错误
-        try {
-          const earths = Array.from(earthsData);
-          if (earths && earths.length > 0) {
-            earths.forEach(earth => {
-              try {
-                // 提取idx并确保它是数字
-                const idx = Number(earth.idx || 0);
-                // 记录最大的idx值
-                maxIdx = Math.max(maxIdx, idx);
-                
-                // 确保颜色值的处理
-                let colorValue = earth.color;
-                // 将颜色处理简化，空字符串或空值视为未购买
-                if (!colorValue || colorValue === "") {
-                  colorValue = "";
-                }
-                
-                processedEarths.push({
-                  idx: idx,
-                  color: colorValue,
-                  price: Number(earth.price || 0),
-                  image_url: earth.image_url || ""
-                });
-              } catch (itemError) {
-                console.error("处理单个Earth数据项时出错:", itemError, earth);
-              }
-            });
-          }
-        } catch (arrayError) {
-          console.error("处理Earth数组时出错:", arrayError);
-        }
-        
-        console.log("已处理的地块数据:", processedEarths.length, "最大idx:", maxIdx);
-        
-        // 计算需要的格子总数
-        const requiredTiles = Math.max(
-          gridSize * gridSize, // 至少铺满整个屏幕
-          maxIdx + 1, // 或者包含最大索引位置
-          100 // 最小保证有100个格子
-        );
-        
-        // 初始化所有格子为空
-        initialData = Array(requiredTiles).fill().map((_, index) => ({ 
-          idx: index, // 使用index作为默认idx
-          color: "", 
-          price: 0, 
-          image_url: "" 
-        }));
-        
-        // 根据idx填充相应位置的格子数据
-        if (processedEarths.length > 0) {
-          processedEarths.forEach(earth => {
-            if (earth.idx >= 0 && earth.idx < initialData.length) {
-              initialData[earth.idx] = earth;
-            } else {
-              console.warn(`地块idx(${earth.idx})超出有效范围(0-${initialData.length-1})`);
-            }
-          });
-        }
-        
-        setEarthData(initialData);
-        
-      } catch (error) {
-        console.error("处理合约数据时发生错误:", error);
-        // 创建备用数据
-        const newData = Array(gridSize * gridSize).fill().map((_, index) => ({ 
-          idx: index,
-          color: "#FFFFFF", 
-          price: 0, 
-          image_url: "" 
-        }));
-        setEarthData(newData);
-        showToast("Failed to load contract data. Using placeholder data.", "error");
-      }
-    } else {
+    if (!earthsData) {
       // 如果没有合约数据，初始化空格子
       const newData = Array(gridSize * gridSize).fill().map((_, index) => ({ 
         idx: index,
-        color: "#FFFFFF", 
+        color: "", 
         price: 0, 
         image_url: "" 
       }));
       setEarthData(newData);
+      return;
     }
+    
+    try {
+      // 创建一个初始的空数组
+      let initialData = [];
+      
+      // 处理合约数据 - 使用idx字段而不是数组索引
+      let maxIdx = 0;
+      const processedEarths = [];
+      
+      // 安全地处理合约数据，防止解析错误
+      try {
+        const earths = Array.from(earthsData);
+        if (earths && earths.length > 0) {
+          earths.forEach(earth => {
+            try {
+              // 提取idx并确保它是数字
+              const idx = Number(earth.idx || 0);
+              // 记录最大的idx值
+              maxIdx = Math.max(maxIdx, idx);
+              
+              // 确保颜色值的处理
+              let colorValue = earth.color;
+              // 将颜色处理简化，空字符串或空值视为未购买
+              if (!colorValue || colorValue === "") {
+                colorValue = "";
+              }
+              
+              processedEarths.push({
+                idx: idx,
+                color: colorValue,
+                price: Number(earth.price || 0),
+                image_url: earth.image_url || ""
+              });
+            } catch (itemError) {
+              console.error("处理单个Earth数据项时出错:", itemError, earth);
+            }
+          });
+        }
+      } catch (arrayError) {
+        console.error("处理Earth数组时出错:", arrayError);
+      }
+      
+      console.log("已处理的地块数据:", processedEarths.length, "最大idx:", maxIdx);
+      
+      // 计算需要的格子总数
+      const requiredTiles = Math.max(
+        gridSize * gridSize, // 至少铺满整个屏幕
+        maxIdx + 1, // 或者包含最大索引位置
+        100 // 最小保证有100个格子
+      );
+      
+      // 初始化所有格子为空
+      initialData = Array(requiredTiles).fill().map((_, index) => ({ 
+        idx: index, // 使用index作为默认idx
+        color: "", 
+        price: 0, 
+        image_url: "" 
+      }));
+      
+      // 根据idx填充相应位置的格子数据
+      if (processedEarths.length > 0) {
+        processedEarths.forEach(earth => {
+          if (earth.idx >= 0 && earth.idx < initialData.length) {
+            initialData[earth.idx] = earth;
+          } else {
+            console.warn(`地块idx(${earth.idx})超出有效范围(0-${initialData.length-1})`);
+          }
+        });
+      }
+      
+      // 使用函数式更新，避免依赖于之前的状态
+      setEarthData(initialData);
+      
+    } catch (error) {
+      console.error("处理合约数据时发生错误:", error);
+      // 创建备用数据
+      const newData = Array(gridSize * gridSize).fill().map((_, index) => ({ 
+        idx: index,
+        color: "", 
+        price: 0, 
+        image_url: "" 
+      }));
+      setEarthData(newData);
+      showToast("Failed to load contract data. Using placeholder data.", "error");
+    }
+    // 删除多余的else分支，因为已经在前面处理了没有合约数据的情况
   }, [earthsData, gridSize]);
 
   // 显示Toast消息
@@ -976,12 +1043,68 @@ const App = () => {
     }
   };
 
+  // 优化渲染网格的方法，使用React.memo避免不必要的重新渲染
+  const GridTile = React.memo(({ earth, index, selectedTile, handleTileClick }) => {
+    // 确保earth对象有效
+    if (!earth) {
+      console.warn(`位置 ${index} 的earth数据无效`);
+      earth = { idx: index, color: "", price: 0, image_url: "" };
+    }
+    
+    // 检查是否有颜色和图片
+    const hasColor = earth.color && earth.color !== "";
+    const hasImage = earth.image_url && earth.image_url.trim() !== "";
+    
+    // 确定背景颜色
+    const backgroundColor = hasColor ? earth.color : '#FFFFFF';
+    
+    // 注意：这里我们使用数组索引作为视觉上的位置索引
+    // 但购买时使用的是这个位置的索引
+    const isSelected = selectedTile === index;
+    // 一个方块被认为是已购买的条件：有颜色或有图片
+    const isPurchased = hasColor || hasImage;
+
+    return (
+      <TileWrapper key={index}>
+        <Tile
+          $isSelected={isSelected}
+          onClick={() => handleTileClick(index)}
+          $purchased={isPurchased}
+        >
+          {/* 始终添加背景颜色层 */}
+          <ColorBackground 
+            color={backgroundColor} 
+            $hasImage={hasImage}
+          />
+          {hasImage && (
+            <TileImage 
+              src={earth.image_url} 
+              alt={`Tile ${index}`} 
+              $hasColor={hasColor}
+              onError={(e) => {
+                console.warn(`位置 ${index} 的图片加载失败:`, earth.image_url);
+                e.target.src = getDefaultAvatarUrl(); // 加载失败时使用默认头像
+              }}
+            />
+          )}
+        </Tile>
+      </TileWrapper>
+    );
+  }, (prevProps, nextProps) => {
+    // 只有在这些属性变化时才重新渲染
+    return (
+      prevProps.selectedTile === nextProps.selectedTile &&
+      prevProps.earth.color === nextProps.earth.color &&
+      prevProps.earth.image_url === nextProps.earth.image_url
+    );
+  });
+
   // 修改渲染网格的方法
   const renderGrid = () => {
     // 确保earthData存在且是数组
     if (!Array.isArray(earthData) || earthData.length === 0) {
       console.warn("earthData不是有效数组或为空，渲染默认网格");
-    return (
+      return (
         <div style={{textAlign: 'center', padding: '20px'}}>
           Loading grid data...
         </div>
@@ -990,60 +1113,15 @@ const App = () => {
 
     return (
       <Grid $gridSize={gridSize}>
-        {earthData.map((earth, index) => {
-          // 确保earth对象有效
-          if (!earth) {
-            console.warn(`位置 ${index} 的earth数据无效`);
-            earth = { idx: index, color: 0, price: 0, image_url: "" };
-          }
-          
-          // 检查是否有颜色和图片
-          const hasColor = earth.color && earth.color !== "";
-          const hasImage = earth.image_url && earth.image_url.trim() !== "";
-          
-          // 确定背景颜色
-          let backgroundColor;
-          if (hasColor) {
-            // 使用格子的颜色
-            backgroundColor = earth.color;
-          } else {
-            // 如果没有颜色，使用白色作为背景
-            backgroundColor = '#FFFFFF';
-          }
-          
-          // 注意：这里我们使用数组索引作为视觉上的位置索引
-          // 但购买时使用的是这个位置的索引
-          const isSelected = selectedTile === index;
-          // 一个方块被认为是已购买的条件：有颜色或有图片
-          const isPurchased = hasColor || hasImage;
-
-          return (
-            <TileWrapper key={index}>
-            <Tile
-              $isSelected={isSelected}
-              onClick={() => handleTileClick(index)}
-              $purchased={isPurchased}
-            >
-                {/* 始终添加背景颜色层 */}
-                <ColorBackground 
-                  color={hasColor ? backgroundColor : '#FFFFFF'} 
-                  $hasImage={hasImage}
-                />
-                {hasImage && (
-                  <TileImage 
-                    src={earth.image_url} 
-                    alt={`Tile ${index}`} 
-                    $hasColor={hasColor}
-                    onError={(e) => {
-                      console.warn(`位置 ${index} 的图片加载失败:`, earth.image_url);
-                      e.target.src = getDefaultAvatarUrl(); // 加载失败时使用默认头像
-                    }}
-                  />
-                )}
-            </Tile>
-            </TileWrapper>
-          );
-        })}
+        {earthData.map((earth, index) => (
+          <GridTile 
+            key={index}
+            earth={earth} 
+            index={index} 
+            selectedTile={selectedTile} 
+            handleTileClick={handleTileClick}
+          />
+        ))}
       </Grid>
     );
   };
