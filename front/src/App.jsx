@@ -27,12 +27,6 @@ const colorMap = {
   7: "custom"   // 自定义颜色
 };
 
-// 手印图标 - SVG路径
-const handprintIcon = {
-  path: "M12,1C5.925,1,1,5.925,1,12s4.925,11,11,11s11-4.925,11-11S18.075,1,12,1z M18.707,9.293l-7,7 C11.512,16.488,11.256,16.585,11,16.585s-0.512-0.098-0.707-0.293l-3-3c-0.391-0.391-0.391-1.023,0-1.414s1.023-0.391,1.414,0 L11,14.171l6.293-6.293c0.391-0.391,1.023-0.391,1.414,0S19.098,8.902,18.707,9.293z",
-  viewBox: "0 0 24 24"
-};
-
 // Toast样式组件
 const ToastContainer = styled.div`
   position: fixed;
@@ -435,20 +429,6 @@ const App = () => {
     }
   }, [isSuccess, isError, error, refetch]);
 
-  // 添加防抖函数
-  const debounce = (func, delay) => {
-    let timeout;
-    return (...args) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), delay);
-    };
-  };
-
-  // 处理图片URL输入变化
-  const handleImageUrlChange = (e) => {
-    setImageUrl(e.target.value);
-  };
-
   // 处理社交媒体平台选择
   const handlePlatformChange = (e) => {
     setPlatform(e.target.value);
@@ -457,17 +437,6 @@ const App = () => {
     // 重置Twitter获取失败状态
     setTwitterFetchFailed(false);
   };
-
-  // 处理社交媒体用户名输入 - 使用useCallback优化，避免重新创建函数导致重渲染
-  const handleUsernameChange = useCallback((e) => {
-    // 移除阻止事件传播的代码，它可能会干扰正常的输入行为
-    // e.preventDefault();
-    // e.stopPropagation();
-    
-    const value = e.target.value;
-    // 简化状态更新，使用常规方式设置状态
-    setUsername(value);
-  }, []); // 不依赖任何变量，确保函数稳定
 
   // 重置预览
   const resetPreview = () => {
@@ -780,20 +749,6 @@ const App = () => {
     showToast(errorMessage, "error");
   };
 
-  // 处理颜色选择
-  const handleColorSelection = (colorValue) => {
-    if (selectedColor === colorValue) {
-      // 如果用户点击已选中的颜色，取消选择
-      setSelectedColor(0);
-      showToast("Color deselected", "info");
-    } else {
-      setSelectedColor(colorValue);
-      // 获取颜色的可读名称或者直接显示颜色值
-      const colorName = colorValue === 7 ? "custom" : Object.entries(colorMap).find(([id, color]) => parseInt(id) === colorValue)?.[1] || colorValue;
-      showToast(`Color ${colorName} selected`, "info");
-    }
-  };
-
   // 处理自定义颜色变化
   const handleCustomColorChange = (e) => {
     // 阻止事件冒泡，防止触发父元素的点击事件
@@ -827,63 +782,6 @@ const App = () => {
     }, 10);
   }, [customColor]);
 
-  // 在SettingsModal组件中使用简单的颜色预览
-  const renderColorOptions = () => {
-    return Object.entries(colorMap).map(([value, color]) => {
-      const intValue = parseInt(value);
-      // 自定义颜色选项特殊处理
-      if (color === "custom") {
-        return (
-          <CustomColorContainer 
-            key={value} 
-            $selected={selectedColor === intValue} 
-            onClick={(e) => handleColorOptionClick(intValue, e)}
-            style={{ 
-              borderColor: selectedColor === intValue ? customColor : '#ddd',
-              boxShadow: selectedColor === intValue ? `0 0 12px ${customColor}` : '0 2px 5px rgba(0, 0, 0, 0.1)'
-            }}
-          >
-            <CustomColorLabel>Custom</CustomColorLabel>
-            <div style={{ 
-              width: '65px', 
-              height: '40px', 
-              backgroundColor: customColor,
-              borderRadius: '8px',
-              border: '2px solid #ccc',
-              position: 'relative',
-              overflow: 'hidden'
-            }}>
-              <input
-                type="color"
-                value={customColor}
-                onChange={handleCustomColorChange}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  opacity: 0.01,
-                  cursor: 'pointer'
-                }}
-              />
-            </div>
-          </CustomColorContainer>
-        );
-      }
-      
-      // 常规颜色选项
-      return (
-        <ColorOption 
-          key={value}
-          style={{ backgroundColor: color }}
-          $selected={selectedColor === intValue}
-          onClick={(e) => handleColorOptionClick(intValue, e)}
-        />
-      );
-    });
-  };
-
   // 在ColorOption和CustomColorContainer中单独处理点击事件
   const handleColorOptionClick = (colorValue, e) => {
     // 阻止事件冒泡
@@ -903,38 +801,6 @@ const App = () => {
       }
     }
   };
-
-  // 为格子添加设置按钮样式
-  const TileSettingsButton = styled.button`
-    position: absolute;
-    bottom: 3px;
-    right: 3px;
-    width: 24px;
-    height: 24px;
-    background-color: rgba(255, 255, 255, 0.7);
-    border-radius: 50%;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.2s, transform 0.2s;
-    z-index: 10;
-    padding: 0;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    
-    &:hover {
-      transform: scale(1.1);
-      background-color: rgba(255, 255, 255, 0.9);
-      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
-    }
-  `;
-
-  const SettingsIcon = styled.span`
-    font-size: 14px;
-    line-height: 1;
-  `;
 
   // 添加格子包装器来确保正方形
   const TileWrapper = styled.div`
@@ -1758,28 +1624,6 @@ const PreviewImage = styled.img`
   }
 `;
 
-const AccountButton = styled.button`
-  background: none;
-  border: none;
-  color: #333;
-  font-size: 14px;
-  cursor: pointer;
-  padding: 6px 12px;
-  border-radius: 6px;
-  transition: background-color 0.2s;
-  
-  &:hover {
-    background-color: #f0f0f0;
-  }
-`;
-
-const WalletConnected = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: nowrap;
-`;
-
 const StyledWalletConnected = styled.div`
   display: flex;
   align-items: center;
@@ -1837,15 +1681,6 @@ const StyledDot = styled.span`
   border-radius: 50%;
   background-color: #4caf50;
   margin-right: 6px;
-`;
-
-const StyledChainInfo = styled.div`
-  font-size: 14px;
-  color: #666;
-  cursor: pointer;
-  padding: 5px 10px;
-  border-radius: 5px;
-  background-color: #e6f2ff;
 `;
 
 const StyledLogoutButton = styled.button`
