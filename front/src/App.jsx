@@ -754,6 +754,7 @@ const App = () => {
     // 阻止事件冒泡，防止触发父元素的点击事件
     e.stopPropagation();
     console.log("Custom color changed:", e.target.value);
+    console.log("e type:", e.type);
     // 获取新的颜色值
     const newColor = e.target.value;
     console.log("Selected new custom color:", newColor);
@@ -762,10 +763,10 @@ const App = () => {
     setCustomColor(newColor);
     
     // 自动选择自定义颜色选项（如果还没选中）
-    if (selectedColor !== 7) {
-      setSelectedColor(7);
-      showToast(`Custom color selected: ${newColor}`, "info");
-    }
+    // if (selectedColor !== 7) {
+    //   setSelectedColor(7);
+    //   showToast(`Custom color selected: ${newColor}`, "info");
+    // }
   };
 
   // 在组件顶层添加useEffect钩子，确保颜色选择器初始化正确
@@ -792,7 +793,10 @@ const App = () => {
       setSelectedColor(0);
       showToast("Color deselected", "info");
     } else {
-      setSelectedColor(colorValue);
+      // 选择的了预定的颜色 或者第一次选择了自定义颜色
+      if (colorValue !== 7 || (colorValue == 7 && selectedColor !== 7)) { 
+        setSelectedColor(colorValue);
+      }
       if (colorValue === 7) {
         console.log(`选择了自定义颜色: ${customColor}`);
         showToast(`Custom color ${customColor} selected`, "info");
