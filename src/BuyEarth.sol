@@ -15,6 +15,8 @@ contract BuyEarth is Initializable, UUPSUpgradeable, OwnableUpgradeable {
     }
     mapping(uint => Earth) private earthsMap;
     uint[] public earthPurchasedIdxArr;
+    // 指定地址购买的所有像素
+    mapping(address => Earth[]) private userPurchasedMap;
 
     event EarthPurchased(
         uint256 indexed idx,
@@ -31,6 +33,7 @@ contract BuyEarth is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         __UUPSUpgradeable_init();
     }
 
+    // 单个购买
     function buyEarth(
         uint256 _idx,
         string memory color,
@@ -44,11 +47,39 @@ contract BuyEarth is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 
         (bool send, ) = owner().call{value: msg.value}("");
         require(send, "Failed to send Ether");
-
-        earthsMap[_idx] = Earth(_idx, color, msg.value, imageUrl, msg.sender);
+        Earth memory buyedEarthInfo = Earth(_idx, color, msg.value, imageUrl, msg.sender);
+        earthsMap[_idx] = buyedEarthInfo;
         earthPurchasedIdxArr.push(_idx);
+        userPurchasedMap[msg.sender].push(
+            buyedEarthInfo
+        );
         emit EarthPurchased(_idx, color, msg.sender, msg.value);
     }
+
+    // 批量购买
+    function batchBuyEarth(
+        Earth[] memory earths
+    ) public payable {
+        require(earths.length > 0, "Invalid earths");
+        require(
+            msg.value == EARTH_PRICE * earths.length,
+           string(abi.encodePacked("Invalid payment, please send ", EARTH_PRICE * earths.length, " MON"))   
+        );
+        for (uint i = 0; i < earths.length; i++) {
+            Earth memory _earth = earths[i];
+            require(earthsMap[_earth.idx].price == 0, "Pixel already purchased");
+            Earth memory buyedEarthInfo = Earth(_earth.idx, _earth.color, EARTH_PRICE, _earth.image_url, msg.sender);
+            earthsMap[_earth.idx] = buyedEarthInfo;
+            earthPurchasedIdxArr.push(_earth.idx);
+            userPurchasedMap[msg.sender].push(
+                buyedEarthInfo
+            );
+            emit EarthPurchased(_earth.idx, _earth.color, msg.sender, msg.value);
+        }
+        (bool send, ) = owner().call{value: msg.value}("");
+        require(send, "Failed to send Ether");
+    }
+
 
     function getEarths() public view returns (Earth[] memory result) {
         uint purchasedLength = earthPurchasedIdxArr.length;
