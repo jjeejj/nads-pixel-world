@@ -712,6 +712,8 @@ const App = () => {
         showSettingsModal && (
           <SettingsModal 
             setShowSettingsModal={setShowSettingsModal}
+            selectedTile={selectedTile}
+            setSelectedTile={setSelectedTile}
           />
         )
       }
