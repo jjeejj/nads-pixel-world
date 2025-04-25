@@ -714,6 +714,7 @@ const App = () => {
             setShowSettingsModal={setShowSettingsModal}
             selectedTile={selectedTile}
             setSelectedTile={setSelectedTile}
+            earthData={earthData}
           />
         )
       }

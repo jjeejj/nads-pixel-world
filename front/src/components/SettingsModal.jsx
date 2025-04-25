@@ -364,7 +364,7 @@ const colorMap = {
 // 设置模态框组件
 const SettingsModal = React.memo((props) => {
   const { showToast } = useToast();
-  const { setShowSettingsModal, selectedTile, setSelectedTile } = props;
+  const { setShowSettingsModal, selectedTile, setSelectedTile,earthData } = props;
   const [imageUrl, setImageUrl] = useState("");
   const [selectedColor, setSelectedColor] = useState(0); // 默认不选颜色
   const [customColor, setCustomColor] = useState("#FF00FF"); // 默认自定义颜色为紫色
@@ -462,7 +462,7 @@ const SettingsModal = React.memo((props) => {
       const positionIdx = selectedTile;
       
       console.log(`Buying pixel: position=${positionIdx}, color=${colorValue}`);
-      console.log(`Current grid size: ${gridSize}x${gridSize}, total tiles: ${earthData.length}`);
+      // console.log(`Current grid size: ${gridSize}x${gridSize}, total tiles: ${earthData.length}`);
       
       // 检查是否有效的位置索引
       if (isNaN(positionIdx) || positionIdx < 0) {
