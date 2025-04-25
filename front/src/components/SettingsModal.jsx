@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import CustomColorSelector from './CustomColorSelector';
 import { useToast } from './Toast/useToast';
+import { getAvatarUrlAsync } from '../utils/avatarUtils';
 
 const ColorSelection = styled.div`
   margin-bottom: 20px;
