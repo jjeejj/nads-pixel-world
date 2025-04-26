@@ -364,7 +364,7 @@ const colorMap = {
 // 设置模态框组件
 const SettingsModal = React.memo((props) => {
   const { showToast } = useToast();
-  const { setShowSettingsModal, selectedTile, setSelectedTile,earthData } = props;
+  const { setShowSettingsModal, selectedTile, setSelectedTile, earthData, buyEarthWrite, handleTransactionError } = props;
   const [imageUrl, setImageUrl] = useState("");
   const [selectedColor, setSelectedColor] = useState(0); // 默认不选颜色
   const [customColor, setCustomColor] = useState("#FF00FF"); // 默认自定义颜色为紫色

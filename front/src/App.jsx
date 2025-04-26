@@ -715,6 +715,8 @@ const App = () => {
             selectedTile={selectedTile}
             setSelectedTile={setSelectedTile}
             earthData={earthData}
+            buyEarthWrite={buyEarthWrite}
+            handleTransactionError={handleTransactionError}
           />
         )
       }
