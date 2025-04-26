@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
-
+import { ToastProvider } from './components/Toast/useToast';
 // RainbowKit和Wagmi配置
 import '@rainbow-me/rainbowkit/styles.css';
 import {
@@ -86,7 +86,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           borderRadius: 'medium',
         })}
       >
+      <ToastProvider>
         <App />
+      </ToastProvider>
       </RainbowKitProvider>
     </WagmiConfig>
   // </React.StrictMode>,
