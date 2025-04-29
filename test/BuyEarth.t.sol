@@ -43,4 +43,14 @@ contract BuyEarthTest is Test {
             console.log("Earth[%d] color: %d", i, earths[i].color);
         }
     }
+
+    function test_batchClearEarthSetting() public {
+        buyEarth.batchClearEarthSetting(new uint256[](0));
+    }
+
+    function test_batchBuyEarth() public {
+        BuyEarth.Earth[] memory earths = new BuyEarth.Earth[](1);
+        earths[0] = BuyEarth.Earth(1, "#FFFFFF", "", user, 0);
+        buyEarth.batchBuyEarth{value: 0.01 ether}(earths);
+    }
 }
