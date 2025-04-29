@@ -14,6 +14,59 @@
     },
     {
         "type": "function",
+        "name": "batchBuyEarth",
+        "inputs": [
+            {
+                "name": "earths",
+                "type": "tuple[]",
+                "internalType": "struct BuyEarth.Earth[]",
+                "components": [
+                    {
+                        "name": "idx",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "color",
+                        "type": "string",
+                        "internalType": "string"
+                    },
+                    {
+                        "name": "image_url",
+                        "type": "string",
+                        "internalType": "string"
+                    },
+                    {
+                        "name": "owner",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "price",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "payable"
+    },
+    {
+        "type": "function",
+        "name": "batchClearEarthSetting",
+        "inputs": [
+            {
+                "name": "earthsIdx",
+                "type": "uint256[]",
+                "internalType": "uint256[]"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
         "name": "buyEarth",
         "inputs": [
             {
@@ -56,6 +109,52 @@
     },
     {
         "type": "function",
+        "name": "getEarthByIdx",
+        "inputs": [
+            {
+                "name": "_idx",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "result",
+                "type": "tuple",
+                "internalType": "struct BuyEarth.Earth",
+                "components": [
+                    {
+                        "name": "idx",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "color",
+                        "type": "string",
+                        "internalType": "string"
+                    },
+                    {
+                        "name": "image_url",
+                        "type": "string",
+                        "internalType": "string"
+                    },
+                    {
+                        "name": "owner",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "price",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
         "name": "getEarths",
         "inputs": [],
         "outputs": [
@@ -75,14 +174,19 @@
                         "internalType": "string"
                     },
                     {
-                        "name": "price",
-                        "type": "uint256",
-                        "internalType": "uint256"
-                    },
-                    {
                         "name": "image_url",
                         "type": "string",
                         "internalType": "string"
+                    },
+                    {
+                        "name": "owner",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "price",
+                        "type": "uint256",
+                        "internalType": "uint256"
                     }
                 ]
             }
@@ -144,6 +248,24 @@
     },
     {
         "type": "function",
+        "name": "updateEarthOwnByIdx",
+        "inputs": [
+            {
+                "name": "_idx",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "owner",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
         "name": "upgradeToAndCall",
         "inputs": [
             {
@@ -177,7 +299,13 @@
                 "internalType": "string"
             },
             {
-                "name": "buyer",
+                "name": "image_url",
+                "type": "string",
+                "indexed": false,
+                "internalType": "string"
+            },
+            {
+                "name": "owner",
                 "type": "address",
                 "indexed": false,
                 "internalType": "address"
