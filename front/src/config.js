@@ -45,13 +45,13 @@ export const ANVIL_CHAIN = {
 export const CONTRACT_CONFIG = {
     // 本地开发环境
     development: {
-        address: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9", // Hardhat默认部署地址
+        address: "0xc3e53F4d16Ae77Db1c982e75a937B9f60FE63690", // Hardhat默认部署地址
         chainId: 31337, // Hardhat本地网络ID
     },
     // 测试网环境
     production: {
         // address: "0xf276667Bb7E4907c65F0C70A6337a0d7eE8039e7", // 替换为实际在Monad测试网上的合约地址， 这个是有测试数据的 
-        address: "0x89d3aB33ED755C52A8C2AaC560a5bE7A81b0fa20",
+        address: "0xd918d63D91bd731C866A35A4c3252E78F577503c",
         chainId: 10143, // Monad测试网ID
     }
 };

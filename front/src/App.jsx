@@ -712,7 +712,7 @@ const App = () => {
             onClick={() => setDeleteMode(!deleteMode)}
             disabled={editSelectedTiles.length > 0} // 批量编辑时不能切换删除
           >
-            {deleteMode ? 'Exit the deletion mode' : 'Deletion mode'}
+            {deleteMode ? 'Exit clean setting mode' : 'Start clean setting mode'}
           </BottomBarButton>
           {deleteMode && (
             <BottomBarButton
@@ -725,7 +725,7 @@ const App = () => {
                 setShowConfirmModal(true);
               }}
             >
-              {isDeleting ? 'Deleting...' : 'Confirm Delete'}
+              {isDeleting ? 'Deleting...' : 'Confirm Clean'}
             </BottomBarButton>
           )}
           {/* 批量提交按钮 */}
@@ -739,7 +739,7 @@ const App = () => {
             </BottomBarButton>
           )}
         </div>
-        <BottomBarLegend>
+        {/* <BottomBarLegend>
           <BottomBarLegendItem>
             <LegendColor color="#3498db" bg="#eaf6fd" />
             Selected (Pending)
@@ -752,7 +752,7 @@ const App = () => {
             <LegendColor color="#e0e0e0" bg="#fff" />
             Normal
           </BottomBarLegendItem>
-        </BottomBarLegend>
+        </BottomBarLegend> */}
       </BottomBar>
 
       <ConfirmModal
@@ -763,8 +763,8 @@ const App = () => {
           handleBatchDelete();
           setShowConfirmModal(false);
         }}
-        title="Confirm Delete"
-        message={`Are you sure you want to delete the selected tiles? This action cannot be undone.`}
+        title="Confirm Clean"
+        message={`Are you sure you want to clean the selected pixel setting? This action cannot be undone.`}
         confirmButtonText={isDeleting ? "Processing..." : "Confirm"}
         isLoading={isDeleting}
       />

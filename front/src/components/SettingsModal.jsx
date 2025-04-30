@@ -759,7 +759,7 @@ const SettingsModal = React.memo((props) => {
           </SettingsSection>
           
           <ActionButton onClick={handleConfirm}>
-            确定
+            Done
           </ActionButton>
         </ModalBody>
       </ModalContent>
