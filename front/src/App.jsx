@@ -127,9 +127,9 @@ const App = () => {
 
         // 监听EarthPurchased事件
         const filter = contract.filters.EarthPurchased();
-        const listener = (idx, color, buyer, price) => {
-          console.log("检测到新的EarthPurchased事件:", { idx, color, buyer, price });
-          setEventData({ idx, color, buyer, price });
+        const listener = (idx, color, image_url, owner, price) => {
+          console.log("检测到新的EarthPurchased事件:", { idx, color, image_url, owner, price });
+          setEventData({ idx, color, image_url, owner, price });
           // 当事件触发时刷新数据
           refetch();
         };
