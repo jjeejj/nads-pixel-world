@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useAccount, useConnect, useDisconnect, useContractRead, useContractWrite, useWaitForTransaction, useNetwork } from 'wagmi';
+import { 
+  useAccount, 
+  useConnect, 
+  useDisconnect, 
+  useReadContract, 
+  useWriteContract, 
+  useWaitForTransactionReceipt, 
+  useChainId,
+  useSimulateContract,
+  useAccountEffect
+} from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { parseEther } from 'viem';
 import { ethers } from 'ethers';
@@ -7,11 +17,12 @@ import { BrowserProvider } from 'ethers';
 import styled from 'styled-components';
 import './App.css';
 import { getContractConfig } from './config';
-import { getAvatarUrl, getAvatarFromUIAvatars, generateLetterAvatar, getAvatarUrlAsync, getDefaultAvatarUrl } from './utils/avatarUtils';
 import SettingsModal from './components/SettingsModal';
+import ConfirmModal from './components/ConfirmModal';
 // BuyEarth合约ABI
 import contractABI from './abi.json'; // 正确导入ABI
 import { useToast } from './components/Toast/useToast';
+import RenderGrid from './components/RenderGrid';
 // 从配置获取合约地址
 const contractConfig = getContractConfig();
 const contractAddress = contractConfig.address;
@@ -22,18 +33,34 @@ const App = () => {
   const [gridSize, setGridSize] = useState(10); // 初始网格大小
   const [earthData, setEarthData] = useState([]); // 初始化为空数组
 
-
-  const { address, isConnected } = useAccount();
+  // 记录编辑选中的格子（待提交）
+  const [editSelectedTiles, setEditSelectedTiles] = useState([]); // [id, id, ...]
+  // 记录删除模式和删除选中的格子
+  const [deleteMode, setDeleteMode] = useState(false);
+  const [deleteSelectedTiles, setDeleteSelectedTiles] = useState([]); // [id, id, ...]
+  const deleteModeRef = useRef(false);
+  const isConnectedRef = useRef(false);
+  const accountInfoRef = useRef(null);
   const { disconnect } = useDisconnect();
-  const { chain } = useNetwork(); // 获取当前连接的链
+  const chainId = useChainId(); // 获取当前连接的链ID
   const [showSettingsModal, setShowSettingsModal] = useState(false); // 新增设置模态框状态
   const [windowSize, setWindowSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight
   });
 
-
-
+  useAccountEffect({
+    onConnect(data) {
+      console.log('Connected!', data)
+      accountInfoRef.current = data;
+      isConnectedRef.current = true;
+    },
+    onDisconnect() {
+      console.log('Disconnected!')
+      accountInfoRef.current = null;
+      isConnectedRef.current = false;
+    },
+  })
 
   // Toast状态
   const [toast, setToast] = useState({
@@ -41,13 +68,17 @@ const App = () => {
     message: "",
     type: "info"
   });
+  
+  useEffect(() => {
+    deleteModeRef.current = deleteMode;
+  }, [deleteMode]);
+  
 
   // 读取所有方块数据
-  const { data: earthsData, refetch, isError: isReadError, error: readError } = useContractRead({
+  const { data: earthsData, refetch, isError: isReadError, error: readError } = useReadContract({
     address: contractAddress,
     abi: contractABI,
     functionName: 'getEarths',
-    watch: false, // 修改为false，避免持续监听导致重复渲染
     // 添加错误处理
     onError: (error) => {
       console.error("读取合约数据错误:", error);
@@ -55,12 +86,32 @@ const App = () => {
     }
   });
 
+
+  // 批量购买/编辑
+  const { writeContractAsync: batchBuyEarthWrite, isSuccess: isBuySuccess, isError: isBuyError, error: buyError } = useWriteContract();
+
+  // 批量删除
+  const { writeContractAsync: batchClearEarthWrite, isSuccess: isClearSuccess, isError: isClearError, error: clearError } = useWriteContract();
+
+  useEffect(() => {
+    if(isBuyError){
+      handleTransactionError(buyError);
+    }else if(isBuySuccess){
+      refetch();
+      showToast("Purchase successful!", "info");
+      setSelectedTile(null);
+      setEditSelectedTiles([]);
+      setEditTileData([]);
+      checkAndExpandGrid();
+    }
+  }, [isBuySuccess, isBuyError, buyError]);
+
   // 添加对EarthPurchased事件的监听
   const [eventData, setEventData] = useState(null);
 
   // 使用useEffect监听合约事件
   useEffect(() => {
-    if (!contractAddress || !isConnected) return;
+    if (!contractAddress || !isConnectedRef.current) return;
 
     // 创建provider和合约实例
     const { ethereum } = window;
@@ -108,8 +159,7 @@ const App = () => {
         contractInstance.removeAllListeners();
       }
     };
-  }, [contractAddress, isConnected, refetch]);
-
+  }, [contractAddress, isConnectedRef, refetch]);
 
   // 监听窗口大小变化，动态调整格子数量
   useEffect(() => {
@@ -199,7 +249,8 @@ const App = () => {
                 idx: idx,
                 color: colorValue,
                 price: Number(earth.price || 0),
-                image_url: earth.image_url || ""
+                image_url: earth.image_url || "",
+                owner: earth.owner || ""
               });
             } catch (itemError) {
               console.error("处理单个Earth数据项时出错:", itemError, earth);
@@ -256,73 +307,37 @@ const App = () => {
     // 删除多余的else分支，因为已经在前面处理了没有合约数据的情况
   }, [earthsData, gridSize]);
 
-  // 购买方块
-  const { write: buyEarthWrite, data: buyEarthData, error: writeError, isError: isWriteError } = useContractWrite({
-    address: contractAddress,
-    abi: contractABI,
-    functionName: 'buyEarth',
-    value: parseEther('0.01'),
-  });
-
-  // 等待交易完成
-  const { isLoading, isSuccess, isError, error } = useWaitForTransaction({
-    hash: buyEarthData?.hash,
-    onError: (error) => {
-      console.error("等待交易时出错:", error);
-      handleTransactionError(error);
-    }
-  });
-
-  // 处理写入错误
-  useEffect(() => {
-    if (isWriteError && writeError) {
-      console.error("合约写入错误:", writeError);
-      handleTransactionError(writeError);
-    }
-  }, [isWriteError, writeError]);
-
-  // 当交易成功时刷新数据，或处理错误
-  useEffect(() => {
-    if (isSuccess) {
-      refetch();
-      setSelectedTile(null);
-      showToast("Purchase successful!", "info");
-      // 购买成功后检查是否需要扩展网格
-      checkAndExpandGrid();
-      setShowSettingsModal(false); // 购买成功后关闭弹窗
-    } else if (isError && error) {
-      console.error("Transaction error:", error);
-      handleTransactionError(error);
-    }
-  }, [isSuccess, isError, error, refetch]);
-
-
+  // 记录每个格子的编辑信息
+  const [editTileData, setEditTileData] = useState([]); // {id: {color, image_url}}
   // 处理方块点击
-  const handleTileClick = (index) => {
-    if (!isConnected) {
+  const handleTileClick = useCallback((index) => {
+    const currentDeleteMode = deleteModeRef.current;
+    console.log('handleTileClick', isConnectedRef.current);
+    if (!isConnectedRef.current) {
       showToast("Please connect your wallet first", "error");
       return;
     }
-
-    console.log(`Clicked tile #${index}:`, earthData[index]);
-
-    // 检查方块是否已被购买 - 使用idx字段
+    // 非删除模式，禁止编辑已被购买的格子
     const earth = earthData[index];
     const hasColor = earth.color && earth.color !== "";
     const hasImage = earth.image_url && earth.image_url.trim() !== "";
-    const isPurchased = hasColor || hasImage;
-
+    console.log('当前格子owner:', earth.owner, '当前用户:', accountInfoRef.current.address);
+    const isPurchased = (hasColor || hasImage) && earth.owner !== accountInfoRef.current.address;
     if (isPurchased) {
       showToast("This pixel has already been purchased", "error");
       return;
     }
-
-    // 设置选中的方块索引为位置索引，而不是数据索引
-    setSelectedTile(index);
-    showToast(`Pixel #${index} selected`, "info");
-  };
-
-
+    if (currentDeleteMode) {
+      if (earthData[index].owner === accountInfoRef.current.address) {
+        setDeleteSelectedTiles(prev =>
+          prev.includes(index) ? prev.filter(id => id !== index) : [...prev, index]
+        );
+      }
+    } else {
+      setSelectedTile(index);
+      setShowSettingsModal(true);
+    }
+  }, [earthData, accountInfoRef.current, selectedTile, setSelectedTile, setShowSettingsModal, isConnectedRef]);
 
   // 处理交易错误的统一函数
   const handleTransactionError = (error) => {
@@ -378,58 +393,6 @@ const App = () => {
     // 显示友好的错误消息
     showToast(errorMessage, "error");
   };
-
-
-  // 添加格子包装器来确保正方形
-  const TileWrapper = styled.div`
-    aspect-ratio: 1 / 1;
-    width: 100%;
-    position: relative;
-    padding: 1px;
-  `;
-
-  // 修改Tile样式让设置按钮在悬停时显示
-  const Tile = styled.div`
-    background-color: white;
-    border: 1px solid #e0e0e0; /* 略微加深边框颜色 */
-    cursor: ${props => props.$purchased ? 'not-allowed' : 'pointer'};
-    transition: all 0.2s ease;
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    border-radius: 4px;
-    overflow: hidden;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02); /* 添加微弱阴影增强边界可见性 */
-    
-    &:hover {
-      transform: ${props => props.$purchased ? 'none' : 'scale(0.97)'};
-      border-color: ${props => props.$isSelected ? '#3498db' : '#b0b0b0'};
-      z-index: 2;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* 悬停时增强阴影 */
-    }
-    
-    ${props => props.$isSelected && `
-      border: 2px solid #3498db;
-      z-index: 3;
-      box-shadow: 0 0 8px rgba(52, 152, 219, 0.4); /* 选中时添加发光效果 */
-    `}
-  `;
-
-  // 创建背景颜色层组件
-  const ColorBackground = styled.div`
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: ${props => props.color};
-    opacity: ${props => props.$hasImage ? 0.7 : 1}; // 降低透明度，使背景更模糊但仍可见
-    border-radius: 3px;
-    z-index: 1; // 背景层在图片下面
-    pointer-events: none; // 避免影响点击事件
-  `;
 
   // 更新检查格子扩展的函数
   const checkAndExpandGrid = () => {
@@ -487,91 +450,148 @@ const App = () => {
     }
   };
 
-  // 优化渲染网格的方法，使用React.memo避免不必要的重新渲染
-  const GridTile = React.memo(({ earth, index, selectedTile, handleTileClick }) => {
-    // 确保earth对象有效
-    if (!earth) {
-      console.warn(`位置 ${index} 的earth数据无效`);
-      earth = { idx: index, color: "", price: 0, image_url: "" };
+  // SettingsModal 相关回调
+  const handleConfirmPixelSetting = (pixel) => {
+    setEditSelectedTiles(prev => {
+      const others = prev.filter(id => id !== pixel.id);
+      return [...others, pixel.id];
+    });
+    setEditTileData(prev => ({ ...prev, [pixel.id]: { ...pixel, color: pixel.color, image_url: pixel.image_url } }));
+    setShowSettingsModal(false);
+    setSelectedTile(null);
+  };
+  const handleCancelPixelSetting = (id) => {
+    // 如果已经是编辑选中（已保存），只关闭弹窗，不清除
+    if (editSelectedTiles.includes(id)) {
+      setShowSettingsModal(false);
+      setSelectedTile(null);
+      return;
     }
-
-    // 检查是否有颜色和图片
-    const hasColor = earth.color && earth.color !== "";
-    const hasImage = earth.image_url && earth.image_url.trim() !== "";
-
-    // 确定背景颜色
-    const backgroundColor = hasColor ? earth.color : '#FFFFFF';
-
-    // 注意：这里我们使用数组索引作为视觉上的位置索引
-    // 但购买时使用的是这个位置的索引
-    const isSelected = selectedTile === index;
-    // 一个方块被认为是已购买的条件：有颜色或有图片
-    const isPurchased = hasColor || hasImage;
-
-    return (
-      <TileWrapper key={index}>
-        <Tile
-          $isSelected={isSelected}
-          onClick={() => handleTileClick(index)}
-          $purchased={isPurchased}
-        >
-          {/* 始终添加背景颜色层 */}
-          <ColorBackground
-            color={backgroundColor}
-            $hasImage={hasImage}
-          />
-          {hasImage && (
-            <TileImage
-              src={earth.image_url}
-              alt={`Tile ${index}`}
-              $hasColor={hasColor}
-              onError={(e) => {
-                console.warn(`位置 ${index} 的图片加载失败:`, earth.image_url);
-                e.target.src = getDefaultAvatarUrl(); // 加载失败时使用默认头像
-              }}
-            />
-          )}
-        </Tile>
-      </TileWrapper>
-    );
-  }, (prevProps, nextProps) => {
-    // 只有在这些属性变化时才重新渲染
-    return (
-      prevProps.selectedTile === nextProps.selectedTile &&
-      prevProps.earth.color === nextProps.earth.color &&
-      prevProps.earth.image_url === nextProps.earth.image_url
-    );
-  });
-
-  // 修改渲染网格的方法
-  const renderGrid = () => {
-    // 确保earthData存在且是数组
-    if (!Array.isArray(earthData) || earthData.length === 0) {
-      console.warn("earthData不是有效数组或为空，渲染默认网格");
-      return (
-        <div style={{ textAlign: 'center', padding: '20px' }}>
-          Loading grid data...
-        </div>
-      );
-    }
-
-    return (
-      <Grid $gridSize={gridSize}>
-        {earthData.map((earth, index) => (
-          <GridTile
-            key={index}
-            earth={earth}
-            index={index}
-            selectedTile={selectedTile}
-            handleTileClick={handleTileClick}
-          />
-        ))}
-      </Grid>
-    );
+    // 否则清除本地编辑数据
+    setEditSelectedTiles(prev => prev.filter(tid => tid !== id));
+    setEditTileData(prev => {
+      const newData = { ...prev };
+      delete newData[id];
+      return newData;
+    });
+    setShowSettingsModal(false);
+    setSelectedTile(null);
   };
 
+  useEffect(() => {
+    if (!deleteMode) {
+      setDeleteSelectedTiles([]);
+    }
+  }, [deleteMode]);
 
+  // 监控批量删除的状态
+  useEffect(() => {
+    if(isClearError){
+      handleTransactionError(clearError);
+    }else if(isClearSuccess){
+      refetch();
+      showToast("Delete successful!", "info");
+      // 清理状态
+      setDeleteSelectedTiles([]);
+      setDeleteMode(false);
+    }
+  }, [isClearSuccess, isClearError, clearError]);
 
+  // 添加 loading 状态
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleBatchSubmit = async () => {
+    if (editSelectedTiles.length === 0) return;
+    
+    // 设置加载状态
+    setIsSubmitting(true);
+    
+    try {
+      // 组装参数
+      const earths = editSelectedTiles.map(idx => {
+        const data = editTileData[idx] || {};
+        // 确保所有字段都有值，不为undefined
+        return {
+          idx: Number(idx) || 0,
+          color: data.color || '',
+          image_url: data.image_url || '',
+          owner: accountInfoRef.current.address || '',
+          price: Number(data.price) || 0
+        };
+      });
+      
+      // 检查是否所有地块都是修改现有地块
+      const isAllModification = earths.every(earth => {
+        // 找到对应的原始地块数据
+        const originalEarth = earthData[earth.idx];
+        // 如果原始地块存在、已有颜色或图片、且归属者是当前用户，则是修改操作
+        return originalEarth && 
+              ((originalEarth.color && originalEarth.color !== '') || 
+                (originalEarth.image_url && originalEarth.image_url !== '')) && 
+              originalEarth.owner === accountInfoRef.current.address;
+      });
+      
+      // 根据是否是修改操作决定支付金额
+      let totalValue = 0n;
+      if (!isAllModification) {
+        // 如果不是全部都是修改操作（有新购买），则计算购买费用
+        // 计算需要购买的地块数量
+        const newPurchaseCount = earths.filter(earth => {
+          const originalEarth = earthData[earth.idx];
+          return !originalEarth || 
+                ((!originalEarth.color || originalEarth.color === '') && 
+                  (!originalEarth.image_url || originalEarth.image_url === '')) ||
+                originalEarth.owner !== address;
+        }).length;
+        
+        totalValue = parseEther('0.01') * BigInt(newPurchaseCount);
+      }
+      
+      console.log('是否全部为修改操作:', isAllModification);
+      console.log('totalValue:', totalValue.toString());
+      
+      await batchBuyEarthWrite({
+        address: contractAddress,
+        abi: contractABI,
+        functionName: 'batchBuyEarth',
+        args: [earths],
+        value: totalValue
+      });
+    } catch (error) {
+      console.error('执行交易失败:', error);
+      handleTransactionError(error);
+    } finally {
+      // 无论成功还是失败，都结束加载状态
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (deleteSelectedTiles.length === 0) return;
+    
+    // 设置加载状态
+    setIsDeleting(true);
+    
+    try {
+      // 确保所有idx都是数字
+      const cleanedIds = deleteSelectedTiles.map(id => Number(id) || 0);
+      await batchClearEarthWrite({
+        address: contractAddress,
+        abi: contractABI,
+        functionName: 'batchClearEarthSetting',
+        args: [cleanedIds]
+      });
+    } catch (error) {
+      console.error('执行删除交易失败:', error);
+      handleTransactionError(error);
+    } finally {
+      // 无论成功还是失败，都结束加载状态
+      setIsDeleting(false);
+    }
+  };
+
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   return (
     <FullScreenContainer>
@@ -655,39 +675,99 @@ const App = () => {
 
       <MainContent>
         <GridContainer>
-          {renderGrid()}
+          <RenderGrid
+            earthData={earthData}
+            gridSize={gridSize}
+            selectedTile={selectedTile}
+            handleTileClick={handleTileClick}
+            editSelectedTiles={editSelectedTiles}
+            deleteSelectedTiles={deleteSelectedTiles}
+            editTileData={editTileData}
+          />
         </GridContainer>
 
-        {/* 修改浮动设置按钮，更改图标和文字 */}
-        <FloatingActionButton
-          onClick={() => {
-            if (!isConnected) {
-              showToast("Please connect your wallet first", "error");
-              return;
-            }
-            if (selectedTile === null) {
-              showToast("Please select a pixel first", "error");
-            } else {
-              setShowSettingsModal(true);
-            }
-          }}
-          title="Customize pixel"
-        >
-          <CustomizeIcon>🎨</CustomizeIcon> Customize This Pixel
-        </FloatingActionButton>
-      </MainContent>
-      {
-        showSettingsModal && (
+        {showSettingsModal && (
           <SettingsModal
             setShowSettingsModal={setShowSettingsModal}
             selectedTile={selectedTile}
             setSelectedTile={setSelectedTile}
             earthData={earthData}
-            buyEarthWrite={buyEarthWrite}
-            handleTransactionError={handleTransactionError}
+            // 回显数据：如果已卖出且owner是自己，传递earthData[selectedTile]，否则editTileData[selectedTile]或默认
+            pixelData={(() => {
+              const earth = earthData[selectedTile];
+              if (earth && (earth.owner === accountInfoRef.current.address)) {
+                return earth;
+              }
+              return editTileData[selectedTile] || { color: '', image_url: '' };
+            })()}
+            onConfirmPixelSetting={handleConfirmPixelSetting}
+            onCancelPixelSetting={handleCancelPixelSetting}
           />
-        )
-      }
+        )}
+      </MainContent>
+      <BottomBar>
+        <div style={{display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap'}}>
+          <BottomBarButton
+            active={!!deleteMode}
+            onClick={() => setDeleteMode(!deleteMode)}
+            disabled={editSelectedTiles.length > 0} // 批量编辑时不能切换删除
+          >
+            {deleteMode ? 'Exit the deletion mode' : 'Deletion mode'}
+          </BottomBarButton>
+          {deleteMode && (
+            <BottomBarButton
+              danger
+              active={deleteSelectedTiles.length > 0}
+              disabled={deleteSelectedTiles.length === 0 || isDeleting}
+              ml={8}
+              onClick={() => {
+                if (deleteSelectedTiles.length === 0) return;
+                setShowConfirmModal(true);
+              }}
+            >
+              {isDeleting ? 'Deleting...' : 'Confirm Delete'}
+            </BottomBarButton>
+          )}
+          {/* 批量提交按钮 */}
+          {!deleteMode && (
+            <BottomBarButton
+              active={editSelectedTiles.length > 0}
+              disabled={editSelectedTiles.length === 0 || isSubmitting}
+              onClick={handleBatchSubmit}
+            >
+               {isSubmitting ? 'Processing...' : 'I\'ll take it'}
+            </BottomBarButton>
+          )}
+        </div>
+        <BottomBarLegend>
+          <BottomBarLegendItem>
+            <LegendColor color="#3498db" bg="#eaf6fd" />
+            Selected (Pending)
+          </BottomBarLegendItem>
+          <BottomBarLegendItem>
+            <LegendColor color="#e74c3c" bg="#fdeaea" />
+            To Delete
+          </BottomBarLegendItem>
+          <BottomBarLegendItem>
+            <LegendColor color="#e0e0e0" bg="#fff" />
+            Normal
+          </BottomBarLegendItem>
+        </BottomBarLegend>
+      </BottomBar>
+
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={() => {
+          // 通过调用handleBatchDelete函数处理删除操作
+          handleBatchDelete();
+          setShowConfirmModal(false);
+        }}
+        title="Confirm Delete"
+        message={`Are you sure you want to delete the selected tiles? This action cannot be undone.`}
+        confirmButtonText={isDeleting ? "Processing..." : "Confirm"}
+        isLoading={isDeleting}
+      />
     </FullScreenContainer>
   );
 };
@@ -729,6 +809,7 @@ const MainContent = styled.main`
   position: relative;
   background-color: #ffffff;
   overflow-x: hidden;
+  padding-bottom: 100px;
 `;
 
 const GridContainer = styled.div`
@@ -744,27 +825,6 @@ const GridContainer = styled.div`
     padding: 5px;
   }
 `;
-
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(${props => props.$gridSize}, 45.2px);
-  grid-template-rows: repeat(${props => props.$gridSize}, 45.2px);
-  gap: 1px;
-  background-color: #ffffff;
-  border-radius: 8px;
-  margin: 5px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(200, 200, 200, 0.3);
-  
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(${props => props.$gridSize}, 1fr);
-    grid-template-rows: repeat(${props => props.$gridSize}, 1fr);
-    width: 100%;
-    gap: 2px;
-    margin: 0;
-  }
-`;
-
 
 const StyledWalletConnected = styled.div`
   display: flex;
@@ -879,32 +939,6 @@ const EnhancedConnectButton = styled.button`
   }
 `;
 
-const TileImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  position: absolute;
-  top: 0;
-  left: 0;
-  opacity: ${props => props.$hasColor ? 0.6 : 1}; // 只有在存在颜色时才降低透明度
-  mix-blend-mode: normal;
-  border-radius: 3px;
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
-  -webkit-backface-visibility: hidden;
-  -moz-backface-visibility: hidden;
-  -webkit-transform: translateZ(0);
-  -moz-transform: translateZ(0);
-  transform: translateZ(0);
-  z-index: 2;
-  pointer-events: none;
-  filter: contrast(1.05);
-`;
-
-
-
-
-// 修改浮动操作按钮样式
 const FloatingActionButton = styled.button`
   position: fixed;
   bottom: 20px;
@@ -1039,6 +1073,74 @@ const WalletSection = styled.div`
   }
 `;
 
+const BottomBar = styled.div`
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  border-top: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  background-color: #fff;
+  align-items: center;
+  z-index: 2000;
+  padding: 6px 0;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
+`;
 
+const BottomBarButton = styled.button`
+  background: ${props => props.danger ? (props.active ? '#e74c3c' : '#eee') : (props.active ? '#e74c3c' : '#3498db')};
+  color: ${props => props.danger ? (props.active ? '#fff' : '#aaa') : '#fff'};
+  border: none;
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 14px;
+  height: 30px;
+  margin-bottom: 8px;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  box-shadow: ${props => props.active ? '0 2px 8px #e74c3c33' : '0 2px 8px #3498db33'};
+  transition: all 0.2s;
+  margin-left: ${props => props.ml || 0}px;
+  @media (max-width: 768px) {
+    font-size: 13px;
+  }
+`;
+
+const BottomBarLegend = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+  flex-wrap: wrap;
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: start;
+    gap: 4px;
+  }
+`;
+
+const BottomBarLegendItem = styled.div`
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  @media (max-width: 768px) {
+    margin-right: 6px;
+  }
+`;
+
+const LegendColor = styled.span`
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  margin-right: 8px;
+  border: 2px solid ${props => props.color};
+  background: ${props => props.bg};
+  @media (max-width: 768px) {
+    width: 14px;
+    height: 14px;
+    margin-right: 5px;
+  }
+`;
 
 export default App;

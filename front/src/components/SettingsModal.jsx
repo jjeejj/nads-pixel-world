@@ -364,10 +364,18 @@ const colorMap = {
 // 设置模态框组件
 const SettingsModal = React.memo((props) => {
   const { showToast } = useToast();
-  const { setShowSettingsModal, selectedTile, setSelectedTile, earthData, buyEarthWrite, handleTransactionError } = props;
-  const [imageUrl, setImageUrl] = useState("");
-  const [selectedColor, setSelectedColor] = useState(0); // 默认不选颜色
-  const [customColor, setCustomColor] = useState("#FF00FF"); // 默认自定义颜色为紫色
+  const { setShowSettingsModal, selectedTile, setSelectedTile, earthData, pixelData, onConfirmPixelSetting, onCancelPixelSetting } = props;
+  // 初始值根据pixelData回显
+  const [imageUrl, setImageUrl] = useState(pixelData?.image_url || "");
+  // 颜色回显：如果是自定义色，selectedColor=7，否则匹配colorMap
+  const getColorIdFromValue = (color) => {
+    if (!color) return 0;
+    const found = Object.entries(colorMap).find(([k, v]) => v === color);
+    if (found) return parseInt(found[0]);
+    return 7; // 自定义色
+  };
+  const [selectedColor, setSelectedColor] = useState(getColorIdFromValue(pixelData?.color));
+  const [customColor, setCustomColor] = useState(pixelData?.color && getColorIdFromValue(pixelData.color) === 7 ? pixelData.color : "#FF00FF");
   // 社交媒体用户名状态
   const [platform, setPlatform] = useState("github"); // 默认为GitHub
   const [username, setUsername] = useState("");
@@ -380,7 +388,6 @@ const SettingsModal = React.memo((props) => {
   // 添加ref来跟踪输入框
   const usernameInputRef = useRef(null);
 
-
   // 添加useEffect来处理输入框的特殊焦点问题
   useEffect(() => {
     // 初始聚焦输入框
@@ -392,119 +399,58 @@ const SettingsModal = React.memo((props) => {
     }
   }, []);
 
-    // 处理购买方块
-  const handleBuyEarth = () => {
+  // 添加useEffect来处理imageUrl的回显
+  useEffect(() => {
+    if (pixelData?.image_url) {
+      setImageUrl(pixelData.image_url);
+      setPreviewUrl(pixelData.image_url);
+      setShowPreview(true);
+      // 如果是Twitter头像URL，自动切换到custom平台
+      if (pixelData.image_url.includes('pbs.twimg.com/profile_images')) {
+        setPlatform('custom');
+        setUsername(pixelData.image_url);
+      }
+    }
+  }, [pixelData]);
+
+  // 处理购买方块
+  const handleConfirm = () => {
     if (selectedTile === null) {
       showToast("Please select a pixel first", "error");
       return;
     }
-
-    // 检查选择的格子索引是否在有效范围内
     if (selectedTile < 0 || selectedTile >= earthData.length) {
       showToast("Selected pixel is invalid, please select a different pixel", "error");
       setSelectedTile(null);
       return;
     }
-
-    // 检查是否选择了颜色或提供了图片URL
     const hasColor = selectedColor !== 0;
     const hasImage = imageUrl.trim() !== "";
-    
-    // 允许只提供图片URL，不再要求必须选择颜色
     if (!hasColor && !hasImage) {
       showToast("Please provide an image URL or select a color", "error");
       return;
     }
-
-    // 检查选中的方块是否已经被购买
-    const selectedEarth = earthData[selectedTile];
-    if (selectedEarth && ((selectedEarth.color && selectedEarth.color !== "") || (selectedEarth.image_url && selectedEarth.image_url.trim() !== ""))) {
-      showToast("This pixel is already purchased. Please select another pixel.", "error");
-      setSelectedTile(null);
-      return;
-    }
-
-    // 使用颜色值，如果是0（未选择）或7（自定义），需要特殊处理
-    const colorId = selectedColor;
-    // 如果是自定义颜色，可能需要将颜色值转换为合约可以处理的格式
-    // 但在当前实现中我们只传递colorId=7表示自定义颜色
-    // 合约可以存储额外的自定义颜色信息，或者在前端展示时特殊处理
-    const finalImageUrl = imageUrl.trim();
-
-    // 在控制台记录自定义颜色的使用
-    if (colorId === 7) {
-      console.log(`Using custom color: ${customColor}`);
-      console.log(`Selected color ID: ${colorId}, Custom color value: ${customColor}`);
-    }
-
-    // 准备实际要传递的颜色值（字符串形式）
-    let colorValue = ""; // 默认为空字符串
-    if (colorId === 0) {
-      colorValue = ""; // 未选择颜色，传空字符串
-    } else if (colorId === 7) {
-      colorValue = customColor; // 自定义颜色
-    } else if (colorMap[colorId]) {
-      colorValue = colorMap[colorId]; // 预设颜色
-    }
-
-    // 如果用户没有选择颜色，也没有提供图片，默认设置为空字符串
-    if (!hasColor && !hasImage) {
+    let colorValue = "";
+    if (selectedColor === 0) {
       colorValue = "";
-      showToast("Please provide an image URL or select a color", "error");
-      return;
+    } else if (selectedColor === 7) {
+      colorValue = customColor;
+    } else if (colorMap[selectedColor]) {
+      colorValue = colorMap[selectedColor];
     }
-
-    // 显示正在处理的提示
-    showToast("Processing transaction...", "info");
-
-    try {
-      // 位置索引就是selectedTile，它是视觉上的位置索引
-      const positionIdx = selectedTile;
-      
-      console.log(`Buying pixel: position=${positionIdx}, color=${colorValue}`);
-      // console.log(`Current grid size: ${gridSize}x${gridSize}, total tiles: ${earthData.length}`);
-      
-      // 检查是否有效的位置索引
-      if (isNaN(positionIdx) || positionIdx < 0) {
-        showToast("Invalid position index", "error");
-        return;
-      }
-      
-      const config = {
-        args: [positionIdx, colorValue, finalImageUrl],
-        onSettled: (data, error) => {
-          if (error) {
-            console.error("Transaction processing error:", error);
-            // 处理错误
-            handleTransactionError(error);
-          } else if (data) {
-            console.log("Transaction submitted:", data);
-          }
-        },
-        onSuccess: (data) => {
-          console.log("Transaction sent successfully:", data);
-          showToast("Transaction submitted successfully!", "info");
-        }
-      };
-      
-      // 在发送交易前进行最后确认
-      console.log("Preparing to send transaction, params:", config.args);
-      buyEarthWrite(config);
-    } catch (error) {
-      console.error("Error buying pixel:", error);
-      handleTransactionError(error);
-    }
-    // setShowSettingsModal(false)
+    onConfirmPixelSetting({
+      ...pixelData,
+      id: selectedTile,
+      color: colorValue,
+      image_url: imageUrl.trim()
+    });
   };
-
-  
 
   // 重置预览
   const resetPreview = () => {
     setShowPreview(false);
     setPreviewUrl("");
   };
-
 
   // 验证URL是否有效
   const isValidUrl = (string) => {
@@ -520,10 +466,8 @@ const SettingsModal = React.memo((props) => {
   const handleCustomColorChange = (e) => {
     // 阻止事件冒泡，防止触发父元素的点击事件
     e.stopPropagation();
-    console.log("Custom color changed:", e.target.value);
     // 获取新的颜色值
     const newColor = e.target.value;
-    console.log("Selected new custom color:", newColor);
     
     // 立即更新状态
     setCustomColor(newColor);
@@ -535,8 +479,8 @@ const SettingsModal = React.memo((props) => {
     }
   };
 
-   // 在ColorOption和CustomColorContainer中单独处理点击事件
-   const handleColorOptionClick = (colorValue, e) => {
+  // 在ColorOption和CustomColorContainer中单独处理点击事件
+  const handleColorOptionClick = (colorValue, e) => {
     // 阻止事件冒泡
     if (e) e.stopPropagation();
     
@@ -547,7 +491,6 @@ const SettingsModal = React.memo((props) => {
     } else {
       setSelectedColor(colorValue);
       if (colorValue === 7) {
-        console.log(`选择了自定义颜色: ${customColor}`);
         showToast(`Custom color ${customColor} selected`, "info");
       } else {
         showToast(`Color ${colorMap[colorValue]} selected`, "info");
@@ -564,8 +507,8 @@ const SettingsModal = React.memo((props) => {
     setTwitterFetchFailed(false);
   };
 
-   // 获取头像URL
-   const handleGetAvatarUrl = async () => {
+  // 获取头像URL
+  const handleGetAvatarUrl = async () => {
     if (!username) {
       showToast("Please enter a username", "error");
       return;
@@ -612,7 +555,7 @@ const SettingsModal = React.memo((props) => {
             showToast("Unable to automatically obtain Twitter avatar, please follow the instructions to manually obtain it", "error");
             return;
           }
-      } catch (error) {
+        } catch (error) {
           console.error("Avatar fetch failed:", error);
           
           if (platform === 'twitter') {
@@ -676,15 +619,14 @@ const SettingsModal = React.memo((props) => {
   
   return (
     <ModalOverlay onClick={(e) => {
-      // 仅当点击背景时关闭模态框
       if (e.target === e.currentTarget) {
-        setShowSettingsModal(false);
+        onCancelPixelSetting(selectedTile);
       }
     }}>
       <ModalContent onClick={(e) => e.stopPropagation()}>
         <ModalHeader>
           <ModalTitle>Pixel Settings</ModalTitle>
-          <CloseButton onClick={() => setShowSettingsModal(false)}>×</CloseButton>
+          <CloseButton onClick={() => onCancelPixelSetting(selectedTile)}>×</CloseButton>
         </ModalHeader>
         
         <ModalBody>
@@ -816,8 +758,8 @@ const SettingsModal = React.memo((props) => {
             )}
           </SettingsSection>
           
-          <ActionButton onClick={handleBuyEarth}>
-          I'll take it
+          <ActionButton onClick={handleConfirm}>
+            确定
           </ActionButton>
         </ModalBody>
       </ModalContent>
