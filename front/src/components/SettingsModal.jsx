@@ -383,9 +383,9 @@ const SettingsModal = React.memo((props) => {
   }, []);
   
   
-  const { setShowSettingsModal, selectedTile, setSelectedTile, earthData, pixelData, onConfirmPixelSetting, onCancelPixelSetting } = props;
+  const { setShowSettingsModal, selectedTile, setSelectedTile, earthData, pixelData, onConfirmPixelSetting, onCancelPixelSetting, onConfirmMultiSelect, multiSelectMode } = props;
   // 初始值根据pixelData回显
-  const [imageUrl, setImageUrl] = useState(pixelData?.image_url || "");
+  const [imageUrl, setImageUrl] = useState(!multiSelectMode ? pixelData?.image_url || "" : "");
   // 颜色回显：如果是自定义色，selectedColor=7，否则匹配colorMap
   
   const getColorIdFromValue = (color) => {
@@ -394,7 +394,7 @@ const SettingsModal = React.memo((props) => {
     if (found) return parseInt(found[0]);
     return 7; // 自定义色
   };
-  const [selectedColor, setSelectedColor] = useState(getColorIdFromValue(pixelData?.color));
+  const [selectedColor, setSelectedColor] = useState(getColorIdFromValue(!multiSelectMode ? pixelData?.color : ''));
   const [customColor, setCustomColor] = useState(pixelData?.color && getColorIdFromValue(pixelData.color) === 7 ? pixelData.color : "#FF00FF");
   // 社交媒体用户名状态
   const [platform, setPlatform] = useState("github"); // 默认为GitHub
@@ -421,6 +421,9 @@ const SettingsModal = React.memo((props) => {
 
   // 添加useEffect来处理imageUrl的回显
   useEffect(() => {
+    if(multiSelectMode){
+      return;
+    }
     if (pixelData?.image_url) {
       setImageUrl(pixelData.image_url);
       setPreviewUrl(pixelData.image_url);
@@ -431,18 +434,20 @@ const SettingsModal = React.memo((props) => {
         setUsername(pixelData.image_url);
       }
     }
-  }, [pixelData]);
+  }, [pixelData, multiSelectMode]);
 
   // 处理购买方块
   const handleConfirm = () => {
-    if (selectedTile === null) {
-      showToast("Please select a pixel first", "error");
-      return;
-    }
-    if (selectedTile < 0 || selectedTile >= earthData.length) {
-      showToast("Selected pixel is invalid, please select a different pixel", "error");
-      setSelectedTile(null);
-      return;
+    if(!multiSelectMode){
+      if (selectedTile === null) {
+        showToast("Please select a pixel first", "error");
+        return;
+      }
+      if (selectedTile < 0 || selectedTile >= earthData.length) {
+        showToast("Selected pixel is invalid, please select a different pixel", "error");
+        setSelectedTile(null);
+        return;
+      }
     }
     const hasColor = selectedColor !== 0;
     const hasImage = imageUrl.trim() !== "";
@@ -459,12 +464,20 @@ const SettingsModal = React.memo((props) => {
       colorValue = colorMap[selectedColor];
     }
     setColorToStorage(colorValue);
-    onConfirmPixelSetting({
-      ...pixelData,
-      id: selectedTile,
-      color: colorValue,
-      image_url: imageUrl.trim()
-    });
+    if(multiSelectMode){
+      onConfirmMultiSelect({
+        color: colorValue,
+        image_url: imageUrl.trim()
+      });
+    } else {
+      onConfirmPixelSetting({
+        ...pixelData,
+        id: selectedTile,
+        color: colorValue,
+        image_url: imageUrl.trim()
+      });
+    }
+    
   };
 
   // 重置预览
