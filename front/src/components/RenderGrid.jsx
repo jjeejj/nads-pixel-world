@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import GridTile from './GridTile';
 import styled from 'styled-components';
 
-const RenderGrid = ({ earthData, gridSize, selectedTile, handleTileClick, editSelectedTiles, deleteSelectedTiles, editTileData }) => {
+const RenderGrid = ({ earthData, gridSize, selectedTile, handleTileClick, editSelectedTiles, deleteSelectedTiles, editTileData, multiSelectTiles }) => {
   if (!Array.isArray(earthData) || earthData.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '20px' }}>
@@ -20,7 +20,7 @@ const RenderGrid = ({ earthData, gridSize, selectedTile, handleTileClick, editSe
           selectedTile={selectedTile}
           handleTileClick={handleTileClick}
           isEditSelected={editSelectedTiles.includes(index)}
-          isDeleteSelected={deleteSelectedTiles.includes(index)}
+          isDeleteSelected={deleteSelectedTiles.includes(index) || multiSelectTiles.includes(index)}
           editTileData={editTileData}
         />
       ))}

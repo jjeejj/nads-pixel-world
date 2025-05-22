@@ -37,8 +37,11 @@ const App = () => {
   const [editSelectedTiles, setEditSelectedTiles] = useState([]); // [id, id, ...]
   // 记录删除模式和删除选中的格子
   const [deleteMode, setDeleteMode] = useState(false);
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
+  const [multiSelectTiles, setMultiSelectTiles] = useState([]); // [id, id, ...]
   const [deleteSelectedTiles, setDeleteSelectedTiles] = useState([]); // [id, id, ...]
   const deleteModeRef = useRef(false);
+  const multiSelectModeRef = useRef(false);
   const isConnectedRef = useRef(false);
   const accountInfoRef = useRef(null);
   const { disconnect } = useDisconnect();
@@ -72,6 +75,10 @@ const App = () => {
   useEffect(() => {
     deleteModeRef.current = deleteMode;
   }, [deleteMode]);
+
+  useEffect(() => {
+    multiSelectModeRef.current = multiSelectMode;
+  }, [multiSelectMode]);
   
 
   // 读取所有方块数据
@@ -101,8 +108,11 @@ const App = () => {
       showToast("Purchase successful!", "info");
       setSelectedTile(null);
       setEditSelectedTiles([]);
+      setMultiSelectTiles([]);
       setEditTileData([]);
       checkAndExpandGrid();
+      setMultiSelectMode(false);
+      setDeleteMode(false);
     }
   }, [isBuySuccess, isBuyError, buyError]);
 
@@ -327,7 +337,9 @@ const App = () => {
       showToast("This pixel has already been purchased", "error");
       return;
     }
-    if (currentDeleteMode) {
+    if(multiSelectModeRef.current){
+      setMultiSelectTiles(prev => prev.includes(index) ? prev.filter(id => id !== index) : [...prev, index]);
+    }else if (currentDeleteMode) {
       if (earthData[index].owner === accountInfoRef.current.address) {
         setDeleteSelectedTiles(prev =>
           prev.includes(index) ? prev.filter(id => id !== index) : [...prev, index]
@@ -460,6 +472,18 @@ const App = () => {
     setShowSettingsModal(false);
     setSelectedTile(null);
   };
+  const handleConfirmMultiSelect = (pixel) => {
+    setEditSelectedTiles([...multiSelectTiles]);
+    setEditTileData(prev => ({
+      ...prev,
+      ...multiSelectTiles.reduce((acc, id) => ({
+        ...acc,
+        [id]: { color: pixel.color, image_url: pixel.image_url }
+      }), {})
+    }));
+    setShowSettingsModal(false);
+    setSelectedTile(null);
+  };
   const handleCancelPixelSetting = (id) => {
     // 如果已经是编辑选中（已保存），只关闭弹窗，不清除
     if (editSelectedTiles.includes(id)) {
@@ -483,6 +507,13 @@ const App = () => {
       setDeleteSelectedTiles([]);
     }
   }, [deleteMode]);
+
+  useEffect(() => {
+    if (!multiSelectMode) {
+      setMultiSelectTiles([]);
+      setEditSelectedTiles([]);
+    }
+  }, [multiSelectMode]);
 
   // 监控批量删除的状态
   useEffect(() => {
@@ -508,6 +539,8 @@ const App = () => {
     setIsSubmitting(true);
     
     try {
+      console.log('editSelectedTiles:', editSelectedTiles);
+      console.log('editTileData:', editTileData);
       // 组装参数
       const earths = editSelectedTiles.map(idx => {
         const data = editTileData[idx] || {};
@@ -542,7 +575,7 @@ const App = () => {
           return !originalEarth || 
                 ((!originalEarth.color || originalEarth.color === '') && 
                   (!originalEarth.image_url || originalEarth.image_url === '')) ||
-                originalEarth.owner !== address;
+                originalEarth.owner !== accountInfoRef.current.address;
         }).length;
         
         totalValue = parseEther('0.01') * BigInt(newPurchaseCount);
@@ -550,6 +583,8 @@ const App = () => {
       
       console.log('是否全部为修改操作:', isAllModification);
       console.log('totalValue:', totalValue.toString());
+
+      console.log('earths:', earths);
       
       await batchBuyEarthWrite({
         address: contractAddress,
@@ -682,6 +717,7 @@ const App = () => {
             handleTileClick={handleTileClick}
             editSelectedTiles={editSelectedTiles}
             deleteSelectedTiles={deleteSelectedTiles}
+            multiSelectTiles={multiSelectTiles}
             editTileData={editTileData}
           />
         </GridContainer>
@@ -702,41 +738,97 @@ const App = () => {
             })()}
             onConfirmPixelSetting={handleConfirmPixelSetting}
             onCancelPixelSetting={handleCancelPixelSetting}
+            multiSelectMode={multiSelectMode}
+            onConfirmMultiSelect={handleConfirmMultiSelect}
           />
         )}
       </MainContent>
       <BottomBar>
         <div style={{display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap'}}>
-          <BottomBarButton
-            active={!!deleteMode}
-            onClick={() => setDeleteMode(!deleteMode)}
-            disabled={editSelectedTiles.length > 0} // 批量编辑时不能切换删除
-          >
-            {deleteMode ? 'Exit clean setting mode' : 'Start clean setting mode'}
-          </BottomBarButton>
-          {deleteMode && (
-            <BottomBarButton
-              danger
-              active={deleteSelectedTiles.length > 0}
-              disabled={deleteSelectedTiles.length === 0 || isDeleting}
-              ml={8}
-              onClick={() => {
-                if (deleteSelectedTiles.length === 0) return;
-                setShowConfirmModal(true);
-              }}
-            >
-              {isDeleting ? 'Deleting...' : 'Confirm Clean'}
-            </BottomBarButton>
+          {/* 普通模式下的按钮 */}
+          {!multiSelectMode && !deleteMode && (
+            <>
+              <BottomBarButton
+                active={!!multiSelectMode}
+                onClick={() => setMultiSelectMode(!multiSelectMode)}
+                disabled={editSelectedTiles.length > 0}
+              >
+                Start Multi select mode
+              </BottomBarButton>
+              <BottomBarButton
+                active={!!deleteMode}
+                onClick={() => setDeleteMode(!deleteMode)}
+                disabled={editSelectedTiles.length > 0}
+              >
+                Start clean setting mode
+              </BottomBarButton>
+              <BottomBarButton
+                active={editSelectedTiles.length > 0}
+                disabled={editSelectedTiles.length === 0 || isSubmitting}
+                onClick={handleBatchSubmit}
+              >
+                {isSubmitting ? 'Processing...' : 'I\'ll take it'}
+              </BottomBarButton>
+            </>
           )}
-          {/* 批量提交按钮 */}
-          {!deleteMode && (
-            <BottomBarButton
-              active={editSelectedTiles.length > 0}
-              disabled={editSelectedTiles.length === 0 || isSubmitting}
-              onClick={handleBatchSubmit}
-            >
-               {isSubmitting ? 'Processing...' : 'I\'ll take it'}
-            </BottomBarButton>
+
+          {/* 多选模式下的按钮 */}
+          {multiSelectMode && (
+            <>
+              <BottomBarButton
+                active={true}
+                onClick={() => setMultiSelectMode(false)}
+              >
+                Exit Multi select mode
+              </BottomBarButton>
+              <BottomBarButton
+                danger
+                active={multiSelectTiles.length > 0}
+                disabled={multiSelectTiles.length === 0 || isDeleting}
+                ml={8}
+                onClick={() => {
+                  if (multiSelectTiles.length === 0) return;
+                  setShowSettingsModal(true);
+                }}
+              >
+                Select color
+              </BottomBarButton>
+              {
+                editSelectedTiles.length > 0 && (
+                  <BottomBarButton
+                    active={editSelectedTiles.length > 0}
+                    disabled={editSelectedTiles.length === 0 || isSubmitting}
+                    onClick={handleBatchSubmit}
+                  >
+                    {isSubmitting ? 'Processing...' : 'I\'ll take it'}
+                  </BottomBarButton>
+                )
+              }
+            </>
+          )}
+
+          {/* 删除模式下的按钮 */}
+          {deleteMode && (
+            <>
+              <BottomBarButton
+                active={true}
+                onClick={() => setDeleteMode(false)}
+              >
+                Exit clean setting mode
+              </BottomBarButton>
+              <BottomBarButton
+                danger
+                active={deleteSelectedTiles.length > 0}
+                disabled={deleteSelectedTiles.length === 0 || isDeleting}
+                ml={8}
+                onClick={() => {
+                  if (deleteSelectedTiles.length === 0) return;
+                  setShowConfirmModal(true);
+                }}
+              >
+                {isDeleting ? 'Deleting...' : 'Confirm Clean'}
+              </BottomBarButton>
+            </>
           )}
         </div>
         {/* <BottomBarLegend>
