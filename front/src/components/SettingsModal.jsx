@@ -1,9 +1,9 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import styled from 'styled-components';
 import CustomColorSelector from './CustomColorSelector';
 import { useToast } from './Toast/useToast';
 import { getAvatarUrlAsync } from '../utils/avatarUtils';
-
+import { setColorToStorage, getColorFromStorage } from '../utils/common';
 const ColorSelection = styled.div`
   margin-bottom: 20px;
   display: flex;
@@ -351,23 +351,43 @@ const SearchIcon = styled.span`
 `;
 
 // 颜色映射 - 保留6个常用颜色
-const colorMap = {
+const defaultColorMap = {
   1: "#FF0000", // 红色
   2: "#00FF00", // 绿色
   3: "#0000FF", // 蓝色
   4: "#FFFF00", // 黄色
   5: "#00FFFF", // 青色
   6: "#FFA500", // 橙色
-  7: "custom"   // 自定义颜色
+  // 7: "custom"   // 自定义颜色
 };
+
+
 
 // 设置模态框组件
 const SettingsModal = React.memo((props) => {
   const { showToast } = useToast();
+  
+
+  const colorMap = useMemo(() => {
+    const colorMapArray = [
+      ...getColorFromStorage(),
+      ...Object.values(defaultColorMap)
+    ].slice(0, 6);
+    
+    const colorMap = Object.fromEntries(
+      colorMapArray.map((color, index) => [index + 1, color])
+    );
+    console.log('colorMap11', colorMap)
+    colorMap[7] = "custom";
+    return colorMap
+  }, []);
+  
+  
   const { setShowSettingsModal, selectedTile, setSelectedTile, earthData, pixelData, onConfirmPixelSetting, onCancelPixelSetting } = props;
   // 初始值根据pixelData回显
   const [imageUrl, setImageUrl] = useState(pixelData?.image_url || "");
   // 颜色回显：如果是自定义色，selectedColor=7，否则匹配colorMap
+  
   const getColorIdFromValue = (color) => {
     if (!color) return 0;
     const found = Object.entries(colorMap).find(([k, v]) => v === color);
@@ -438,6 +458,7 @@ const SettingsModal = React.memo((props) => {
     } else if (colorMap[selectedColor]) {
       colorValue = colorMap[selectedColor];
     }
+    setColorToStorage(colorValue);
     onConfirmPixelSetting({
       ...pixelData,
       id: selectedTile,

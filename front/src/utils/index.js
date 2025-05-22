@@ -15,3 +15,9 @@ export { default as Avatar } from './AvatarComponent';
 
 // 导出头像示例组件
 export { default as AvatarExample } from './AvatarExample'; 
+
+// 导出颜色相关工具函数
+export {
+    getColorFromStorage,
+    setColorToStorage
+} from './common';
