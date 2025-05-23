@@ -46,7 +46,7 @@ const ModalOverlay = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: transparent;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -111,6 +111,7 @@ const SectionTitle = styled.h3`
 
 const InputGroup = styled.div`
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   width: 100%;
 `;

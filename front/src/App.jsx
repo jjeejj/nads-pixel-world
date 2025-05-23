@@ -1175,7 +1175,7 @@ const BottomBar = styled.div`
   flex-direction: column;
   background-color: #fff;
   align-items: center;
-  z-index: 2000;
+  z-index: 99;
   padding: 6px 0;
   box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
 `;
