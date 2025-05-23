@@ -744,7 +744,7 @@ const App = () => {
         )}
       </MainContent>
       <BottomBar>
-        <div style={{display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap'}}>
+        <div style={{display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap'}}>
           {/* 普通模式下的按钮 */}
           {!multiSelectMode && !deleteMode && (
             <>
@@ -753,14 +753,14 @@ const App = () => {
                 onClick={() => setMultiSelectMode(!multiSelectMode)}
                 disabled={editSelectedTiles.length > 0}
               >
-                Start Multi select mode
+                Multi select mode
               </BottomBarButton>
               <BottomBarButton
                 active={!!deleteMode}
                 onClick={() => setDeleteMode(!deleteMode)}
                 disabled={editSelectedTiles.length > 0}
               >
-                Start clean setting mode
+                clean setting mode
               </BottomBarButton>
               <BottomBarButton
                 active={editSelectedTiles.length > 0}
@@ -1188,7 +1188,6 @@ const BottomBarButton = styled.button`
   padding: 4px 12px;
   font-size: 14px;
   height: 30px;
-  margin-bottom: 8px;
   cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
   box-shadow: ${props => props.active ? '0 2px 8px #e74c3c33' : '0 2px 8px #3498db33'};
   transition: all 0.2s;
