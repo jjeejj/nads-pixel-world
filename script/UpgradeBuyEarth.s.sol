@@ -16,8 +16,8 @@ interface IProxyUpgrade {
 
 contract UpgradeBuyEarthScript is Script {
     function run() public {
-        uint256 deployerPrivateKey = vm.envUint("PT_ACCOUNT_PRIVATE_KEY");
-        address proxyAddress = 0xf276667Bb7E4907c65F0C70A6337a0d7eE8039e7;
+        uint256 deployerPrivateKey = vm.envUint("LOCAL_PRIVATE_KEY");
+        address proxyAddress = 0x9d4454B023096f34B160D6B654540c56A1F81688;
 
         address deployer = vm.addr(deployerPrivateKey);
         console.log("Deployer address:", deployer);

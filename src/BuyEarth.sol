@@ -70,7 +70,7 @@ contract BuyEarth is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         uint256 buyCount = 0;
         for (uint i = 0; i < earths.length; i++) {
             Earth memory _earth = earths[i];
-            if (earthsMap[_earth.idx].price == 0) {
+            if (earthsMap[_earth.idx].owner == address(0)) {
                 totalPrice += EARTH_PRICE;
                 buyCount++;
             } else {

@@ -332,7 +332,7 @@ const App = () => {
     const hasColor = earth.color && earth.color !== "";
     const hasImage = earth.image_url && earth.image_url.trim() !== "";
     console.log('当前格子owner:', earth.owner, '当前用户:', accountInfoRef.current.address);
-    const isPurchased = (hasColor || hasImage) && earth.owner !== accountInfoRef.current.address;
+    const isPurchased = !!earth.owner && earth.owner !== accountInfoRef.current.address;
     if (isPurchased) {
       showToast("This pixel has already been purchased", "error");
       return;
