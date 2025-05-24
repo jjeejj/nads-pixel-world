@@ -109,7 +109,7 @@ const App = () => {
       setSelectedTile(null);
       setEditSelectedTiles([]);
       setMultiSelectTiles([]);
-      setEditTileData([]);
+      // setEditTileData([]);
       checkAndExpandGrid();
       setMultiSelectMode(false);
       setDeleteMode(false);
