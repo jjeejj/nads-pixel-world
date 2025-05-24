@@ -1,5 +1,6 @@
 {
-  "name": "buy-earth",
+  "name": "nads-pixel-world",
+  "description": "Nads' Home, Build and Powered by Community.",
   "private": true,
   "version": "0.0.0",
   "type": "module",
