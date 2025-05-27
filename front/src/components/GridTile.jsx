@@ -8,12 +8,17 @@ const GridTile = React.memo(({ earth, index, selectedTile, handleTileClick, isEd
     earth = { idx: index, color: "", price: 0, image_url: "" };
   }
 
+
   // 检查是否有颜色和图片
   const hasColor = earth.color && earth.color !== "";
-  const hasImage = earth.image_url && earth.image_url.trim() !== "";
+  
 
   // 确定背景颜色
   const localEdit = editTileData[index];
+
+  const imageUrl = localEdit?.image_url  || earth.image_url || "";
+
+  const hasImage =  imageUrl.trim() !== "";
   const backgroundColor = localEdit && localEdit.color
     ? localEdit.color
     : (hasColor ? earth.color : '#FFFFFF');
@@ -39,7 +44,7 @@ const GridTile = React.memo(({ earth, index, selectedTile, handleTileClick, isEd
         />
         {hasImage && (
           <TileImage
-            src={earth.image_url}
+            src={imageUrl}
             alt={`Tile ${index}`}
             $hasColor={hasColor}
             onError={(e) => {

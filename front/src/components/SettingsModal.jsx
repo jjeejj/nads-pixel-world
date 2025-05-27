@@ -485,6 +485,7 @@ const SettingsModal = React.memo((props) => {
   const resetPreview = () => {
     setShowPreview(false);
     setPreviewUrl("");
+    setImageUrl('')
   };
 
   // 验证URL是否有效
