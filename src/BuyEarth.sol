@@ -79,8 +79,8 @@ contract BuyEarth is Initializable, UUPSUpgradeable, OwnableUpgradeable {
             }
         }
         require(
-            msg.value == totalPrice,
-           string(abi.encodePacked("Invalid payment, please send ", totalPrice.toString(), " MON"))   
+            msg.value >= totalPrice,
+           string(abi.encodePacked("Invalid payment, please at least send ", totalPrice.toString(), " MON"))   
         );
         // 处理相关的逻辑
         Earth[] memory buyEarths = new Earth[](buyCount);
