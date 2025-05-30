@@ -14,9 +14,9 @@ bytes32 constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178
 contract VerifyUpgradeScript is Script {
     function run() public view {
         // 您的代理合约地址
-        address proxyAddress = 0x9d4454B023096f34B160D6B654540c56A1F81688;
+        address proxyAddress = 0xd918d63D91bd731C866A35A4c3252E78F577503c;
         // 期望的实现合约地址 (可选)
-        address expectedImplementation = address(0xcbEAF3BDe82155F56486Fb5a1072cb8baAf547cc); // 如果需要验证特定地址，请更改此值
+        address expectedImplementation = address(0x391E38Ea7FBE409f4695D8eEc161227fAa1d9AeC); // 如果需要验证特定地址，请更改此值
         
         console.log("======== Proxy Information ========");
         console.log("Proxy address:", proxyAddress);

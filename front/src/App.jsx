@@ -755,13 +755,13 @@ const App = () => {
               >
                 Multi select mode
               </BottomBarButton>
-              <BottomBarButton
+              {/* <BottomBarButton
                 active={!!deleteMode}
                 onClick={() => setDeleteMode(!deleteMode)}
                 disabled={editSelectedTiles.length > 0}
               >
                 clean setting mode
-              </BottomBarButton>
+              </BottomBarButton> */}
               <BottomBarButton
                 active={editSelectedTiles.length > 0}
                 disabled={editSelectedTiles.length === 0 || isSubmitting}

@@ -8,6 +8,7 @@ forge script ./script/UpgradeBuyEarth.s.sol --rpc-url Monnad_TestNet --broadcast
 forge script ./script/BuyEarthProxyUUPS.s.sol --rpc-url Anvil --broadcast
 forge script ./script/BuyEarthProxyUUPS.s.sol --rpc-url Monnad_TestNet --broadcast
 forge script ./script/VerifyUpgrade.s.sol --rpc-url Anvil --broadcast
+forge script ./script/VerifyUpgrade.s.sol --rpc-url Monnad_TestNet --broadcast
 
 # verify
 
@@ -16,7 +17,7 @@ forge verify-contract \
     --rpc-url https://testnet-rpc.monad.xyz \
     --verifier sourcify \
     --verifier-url 'https://sourcify-api-monad.blockvision.org' \
-    0xCE42328B06fE856615Cb617Bce2c11F2351D63Bf \
+    0x391E38Ea7FBE409f4695D8eEc161227fAa1d9AeC \
     ./src/BuyEarth.sol:BuyEarth
 
 # monad testnet BuyEarthProxy contract
