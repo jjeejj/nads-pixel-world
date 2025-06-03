@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  useAccount, 
-  useConnect, 
-  useDisconnect, 
-  useReadContract, 
-  useWriteContract, 
-  useWaitForTransactionReceipt, 
+import {
+  useAccount,
+  useConnect,
+  useDisconnect,
+  useReadContract,
+  useWriteContract,
+  useWaitForTransactionReceipt,
   useChainId,
   useSimulateContract,
   useAccountEffect
@@ -71,7 +71,7 @@ const App = () => {
     message: "",
     type: "info"
   });
-  
+
   useEffect(() => {
     deleteModeRef.current = deleteMode;
   }, [deleteMode]);
@@ -79,7 +79,7 @@ const App = () => {
   useEffect(() => {
     multiSelectModeRef.current = multiSelectMode;
   }, [multiSelectMode]);
-  
+
 
   // 读取所有方块数据
   const { data: earthsData, refetch, isError: isReadError, error: readError } = useReadContract({
@@ -101,9 +101,9 @@ const App = () => {
   const { writeContractAsync: batchClearEarthWrite, isSuccess: isClearSuccess, isError: isClearError, error: clearError } = useWriteContract();
 
   useEffect(() => {
-    if(isBuyError){
+    if (isBuyError) {
       handleTransactionError(buyError);
-    }else if(isBuySuccess){
+    } else if (isBuySuccess) {
       refetch();
       showToast("Purchase successful!", "info");
       setSelectedTile(null);
@@ -226,6 +226,7 @@ const App = () => {
         image_url: ""
       }));
       setEarthData(newData);
+      checkAndExpandGrid(); // 在初始化数据后调用
       return;
     }
 
@@ -301,6 +302,7 @@ const App = () => {
 
       // 使用函数式更新，避免依赖于之前的状态
       setEarthData(initialData);
+      checkAndExpandGrid(); // 在初始化数据后调用
 
     } catch (error) {
       console.error("处理合约数据时发生错误:", error);
@@ -337,9 +339,9 @@ const App = () => {
       showToast("This pixel has already been purchased", "error");
       return;
     }
-    if(multiSelectModeRef.current){
+    if (multiSelectModeRef.current) {
       setMultiSelectTiles(prev => prev.includes(index) ? prev.filter(id => id !== index) : [...prev, index]);
-    }else if (currentDeleteMode) {
+    } else if (currentDeleteMode) {
       if (earthData[index].owner === accountInfoRef.current.address) {
         setDeleteSelectedTiles(prev =>
           prev.includes(index) ? prev.filter(id => id !== index) : [...prev, index]
@@ -411,7 +413,7 @@ const App = () => {
     try {
       // 计算购买的格子数量
       const purchasedCount = earthData.filter(earth =>
-        earth && ((earth.color && earth.color !== "") || (earth.image_url && earth.image_url.trim() !== ""))
+        earth && earth.owner && earth.owner !== ""
       ).length;
 
       // 检查剩余空格子是否低于总格子的20%
@@ -419,10 +421,11 @@ const App = () => {
       const remainingTiles = totalTiles - purchasedCount;
 
       console.log(`Grid status: ${purchasedCount} purchased, ${remainingTiles} remaining out of ${totalTiles} total`);
+      console.log(`Condition check: remainingTiles (${remainingTiles}) < totalTiles * 0.9 (${totalTiles * 0.9}) = ${remainingTiles < totalTiles * 0.9}`); // 添加日志
 
-      if (remainingTiles < totalTiles * 0.2) {
-        // 需要扩展网格 - 增加20%
-        const newSize = Math.ceil(gridSize * 1.2);
+      if (remainingTiles < totalTiles * 0.8) {
+        // 需要扩展网格 - 增加100%
+        const newSize = Math.ceil(gridSize * 2);
 
         // 计算需要的新总格子数
         const newTotalTiles = newSize * newSize;
@@ -517,9 +520,9 @@ const App = () => {
 
   // 监控批量删除的状态
   useEffect(() => {
-    if(isClearError){
+    if (isClearError) {
       handleTransactionError(clearError);
-    }else if(isClearSuccess){
+    } else if (isClearSuccess) {
       refetch();
       showToast("Delete successful!", "info");
       // 清理状态
@@ -534,10 +537,10 @@ const App = () => {
 
   const handleBatchSubmit = async () => {
     if (editSelectedTiles.length === 0) return;
-    
+
     // 设置加载状态
     setIsSubmitting(true);
-    
+
     try {
       console.log('editSelectedTiles:', editSelectedTiles);
       console.log('editTileData:', editTileData);
@@ -553,18 +556,18 @@ const App = () => {
           price: Number(data.price) || 0
         };
       });
-      
+
       // 检查是否所有地块都是修改现有地块
       const isAllModification = earths.every(earth => {
         // 找到对应的原始地块数据
         const originalEarth = earthData[earth.idx];
         // 如果原始地块存在、已有颜色或图片、且归属者是当前用户，则是修改操作
-        return originalEarth && 
-              ((originalEarth.color && originalEarth.color !== '') || 
-                (originalEarth.image_url && originalEarth.image_url !== '')) && 
-              originalEarth.owner === accountInfoRef.current.address;
+        return originalEarth &&
+          ((originalEarth.color && originalEarth.color !== '') ||
+            (originalEarth.image_url && originalEarth.image_url !== '')) &&
+          originalEarth.owner === accountInfoRef.current.address;
       });
-      
+
       // 根据是否是修改操作决定支付金额
       let totalValue = 0n;
       if (!isAllModification) {
@@ -572,20 +575,20 @@ const App = () => {
         // 计算需要购买的地块数量
         const newPurchaseCount = earths.filter(earth => {
           const originalEarth = earthData[earth.idx];
-          return !originalEarth || 
-                ((!originalEarth.color || originalEarth.color === '') && 
-                  (!originalEarth.image_url || originalEarth.image_url === '')) ||
-                originalEarth.owner !== accountInfoRef.current.address;
+          return !originalEarth ||
+            ((!originalEarth.color || originalEarth.color === '') &&
+              (!originalEarth.image_url || originalEarth.image_url === '')) ||
+            originalEarth.owner !== accountInfoRef.current.address;
         }).length;
-        
+
         totalValue = parseEther('0.01') * BigInt(newPurchaseCount);
       }
-      
+
       console.log('是否全部为修改操作:', isAllModification);
       console.log('totalValue:', totalValue.toString());
 
       console.log('earths:', earths);
-      
+
       await batchBuyEarthWrite({
         address: contractAddress,
         abi: contractABI,
@@ -604,10 +607,10 @@ const App = () => {
 
   const handleBatchDelete = async () => {
     if (deleteSelectedTiles.length === 0) return;
-    
+
     // 设置加载状态
     setIsDeleting(true);
-    
+
     try {
       // 确保所有idx都是数字
       const cleanedIds = deleteSelectedTiles.map(id => Number(id) || 0);
@@ -744,7 +747,7 @@ const App = () => {
         )}
       </MainContent>
       <BottomBar>
-        <div style={{display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap'}}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
           {/* 普通模式下的按钮 */}
           {!multiSelectMode && !deleteMode && (
             <>
