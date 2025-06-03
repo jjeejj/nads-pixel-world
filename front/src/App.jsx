@@ -421,7 +421,7 @@ const App = () => {
       const remainingTiles = totalTiles - purchasedCount;
 
       console.log(`Grid status: ${purchasedCount} purchased, ${remainingTiles} remaining out of ${totalTiles} total`);
-      console.log(`Condition check: remainingTiles (${remainingTiles}) < totalTiles * 0.9 (${totalTiles * 0.9}) = ${remainingTiles < totalTiles * 0.9}`); // 添加日志
+      console.log(`Condition check: remainingTiles (${remainingTiles}) < totalTiles * 0.8 (${totalTiles * 0.8}) = ${remainingTiles < totalTiles * 0.8}`); // 添加日志
 
       if (remainingTiles < totalTiles * 0.8) {
         // 需要扩展网格 - 增加100%
