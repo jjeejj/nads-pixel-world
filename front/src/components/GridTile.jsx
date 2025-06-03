@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
+import { getDefaultAvatarUrl } from '../utils';
 
 const GridTile = React.memo(({ earth, index, selectedTile, handleTileClick, isEditSelected, isDeleteSelected, editTileData }) => {
   // 确保earth对象有效
