@@ -87,9 +87,13 @@ Nads Pixel World 是一个基于区块链的像素艺术创作平台，让用户
 OpenBuild 社区大力推广
 
 [2个超有趣的 Monad 链上游戏！带你边学边玩边赚！](https://mp.weixin.qq.com/s/op4TNC5Uhh4r6Fk46QitKg)
+
 [Web2 开发者现身说法：如何完成第一个 DApp](https://mp.weixin.qq.com/s/piHAJ09msN7OLyZuWHEc9Q)
+
 [2个超有趣的 Monad 链上游戏！带你边学边玩边赚](https://mp.weixin.qq.com/s/G3z8FYfphPEIs7NdNLLtWQ)
+
 [Monad 格子挑战赛活动回顾 | 扫雷成绩公布 & 像素格子投票开启！](https://mp.weixin.qq.com/s/tIMTorMM4qBUjTPrkg3PrA)  
+
 [Monad 格子挑战赛：像素格子结果公布 & 领奖通知！](https://mp.weixin.qq.com/s/HXHBTzvOkXQHKKEI6NKi7w)
 
 ![](./image/artist.png)
