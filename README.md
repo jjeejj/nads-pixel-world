@@ -2,7 +2,7 @@
 
 Nads Pixel World 是一个基于区块链的像素艺术创作平台，让用户可以购买、自定义并拥有网格中的像素方块。每个方块都可以设置颜色和上传图片，所有权记录在区块链上，确保数字资产的真实性和永久性。
 
-预览地址：https://nads-pixel-world.vercel.app/
+体验地址：https://nads-pixel-world.vercel.app/
 
 ## 项目特点
 
@@ -81,3 +81,15 @@ Nads Pixel World 是一个基于区块链的像素艺术创作平台，让用户
 ## 许可证
 
 本项目采用MIT许可证 - 详情请查看 [LICENSE](LICENSE) 文件 
+
+## 社区推广效果 
+
+OpenBuild 社区大力推广
+
+[2个超有趣的 Monad 链上游戏！带你边学边玩边赚！](https://mp.weixin.qq.com/s/op4TNC5Uhh4r6Fk46QitKg)
+[Web2 开发者现身说法：如何完成第一个 DApp](https://mp.weixin.qq.com/s/piHAJ09msN7OLyZuWHEc9Q)
+[2个超有趣的 Monad 链上游戏！带你边学边玩边赚](https://mp.weixin.qq.com/s/G3z8FYfphPEIs7NdNLLtWQ)
+[Monad 格子挑战赛活动回顾 | 扫雷成绩公布 & 像素格子投票开启！](https://mp.weixin.qq.com/s/tIMTorMM4qBUjTPrkg3PrA)  
+[Monad 格子挑战赛：像素格子结果公布 & 领奖通知！](https://mp.weixin.qq.com/s/HXHBTzvOkXQHKKEI6NKi7w)
+
+![](./image/artist.png)
