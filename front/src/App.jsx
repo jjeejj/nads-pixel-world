@@ -274,6 +274,21 @@ const App = () => {
 
       console.log("已处理的地块数据:", processedEarths.length, "最大idx:", maxIdx);
 
+      // 统计唯一地址数
+      const countUniqueAddresses = (earths) => {
+        const uniqueAddresses = new Set();
+        earths.forEach(earth => {
+          if (earth.owner && earth.owner !== "" && earth.owner !== "0x0000000000000000000000000000000000000000") {
+            uniqueAddresses.add(earth.owner.toLowerCase());
+          }
+        });
+        return uniqueAddresses.size;
+      };
+
+      const uniqueAddressCount = countUniqueAddresses(processedEarths);
+      console.log("唯一地址数量:", uniqueAddressCount);
+      console.log("已购买地块数量:", processedEarths.filter(earth => earth.owner && earth.owner !== "" && earth.owner !== "0x0000000000000000000000000000000000000000").length);
+
       // 计算需要的格子总数
       const requiredTiles = Math.max(
         gridSize * gridSize, // 至少铺满整个屏幕

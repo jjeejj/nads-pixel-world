@@ -86,6 +86,12 @@ Nads Pixel World 是一个基于区块链的像素艺术创作平台，让用户
 
 OpenBuild 社区大力推广
 
+截止 2025年06月22日的参与数据为: 
+   * 参与地址数: 172
+   * 购买地块数: 4226
+   * 交易数: 1546
+
+
 [2个超有趣的 Monad 链上游戏！带你边学边玩边赚！](https://mp.weixin.qq.com/s/op4TNC5Uhh4r6Fk46QitKg)
 
 [Web2 开发者现身说法：如何完成第一个 DApp](https://mp.weixin.qq.com/s/piHAJ09msN7OLyZuWHEc9Q)

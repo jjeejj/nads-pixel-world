@@ -5,6 +5,7 @@ libs = ["lib"]
 metadata = true
 metadata_hash = "none"  # disable ipfs
 use_literal_content = true # store source code in the json file directly
+eth_rpc_timeout = 60000
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
 
